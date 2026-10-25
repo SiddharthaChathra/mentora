@@ -151,7 +151,7 @@ export default async function HodOverview() {
           }))}
         />
 
-        <section className="grid gap-5 lg:grid-cols-3">
+        <section className="grid gap-5 lg:grid-cols-3 [&>*]:min-w-0">
           <Card>
             <CardHeader
               title="Flagged for intervention"

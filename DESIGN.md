@@ -2,7 +2,7 @@
 
 Light-only, calm, data-first. Pale blue canvas, a rounded white shell, Plus Jakarta Sans, one blue family, pastel stat tiles, soft 3D icons. v1 "Academic Atelier" is archived in `DESIGN.v1.md`.
 
-Reference analysis (design/references/ref-cognify.png, ref-kouliah.png — **MANUAL STEP M1: add these files**; v2 was built from the written analysis in the redesign prompt):
+Reference analysis (design/references/ref-cognify.png, ref-kouliah.png):
 - ref-cognify: blue hero stat card with frosted CTA, pastel KPI tiles in one white container, rounded stacked bars, donut with centre total, progress table, ranked list with medals.
 - ref-kouliah: blue stat banner with white 3D icon badges, "Score records" line chart with value row, illustrated GPA card, mini calendar + schedule cards, pill navigation.
 

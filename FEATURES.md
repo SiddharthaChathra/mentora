@@ -50,4 +50,4 @@
 - [x] UX2-13 Students see only personal bests; rankings are mentor/HOD-only
 - [x] UX2-14 "?" help on SGPA/CGPA/credits/MSE/SEE/grade; "Why am I seeing this?" on every insight
 - [x] UX2-15 Card-shaped skeletons; Link prefetch; server-rendered charts
-- [ ] Rubric re-score against the reference images (needs M1)
+- [x] Rubric re-score against the reference images (≥ 9 at 1440/834/390)

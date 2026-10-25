@@ -151,7 +151,7 @@ export default async function MentorOverview() {
         </section>
 
         <section className="grid gap-5 lg:grid-cols-12">
-          <Card className="lg:col-span-7">
+          <Card className="min-w-0 lg:col-span-7">
             <CardHeader
               title="Needs attention"
               description="Every flag explains its reason."
@@ -186,7 +186,7 @@ export default async function MentorOverview() {
               )}
             </CardBody>
           </Card>
-          <Card className="lg:col-span-5">
+          <Card className="min-w-0 lg:col-span-5">
             <CardHeader
               title="Upcoming sessions"
               action={

@@ -18,13 +18,22 @@ import type { GlossaryTerm } from '@/lib/glossary'
 import { DeltaChip } from './primitives'
 import { HelpTip } from './help-tip'
 
-const formatCount = (v: number, decimals: number) => v.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+const formatCount = (v: number, decimals: number) =>
+  v.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 
 /**
  * Count-up that is server-rendered with the real value (no "0" flash, works without JS).
  * Only counters that start below the fold animate, once, when scrolled into view; static under reduced motion / low bandwidth.
  */
-export function CountUp({ value, decimals = 0, className }: { value: number; decimals?: number; className?: string }) {
+export function CountUp({
+  value,
+  decimals = 0,
+  className,
+}: {
+  value: number
+  decimals?: number
+  className?: string
+}) {
   const ref = React.useRef<HTMLSpanElement>(null)
   const belowFold = React.useRef(false)
   const inView = useInView(ref, { once: true })
@@ -42,7 +51,12 @@ export function CountUp({ value, decimals = 0, className }: { value: number; dec
     const text = el.firstChild
     if (!text) return
     const set = (v: number) => (text.nodeValue = formatCount(v, decimals))
-    const c = animate(0, value, { duration: 0.9, ease: [0.2, 0.8, 0.2, 1], onUpdate: set, onComplete: () => set(value) })
+    const c = animate(0, value, {
+      duration: 0.9,
+      ease: [0.2, 0.8, 0.2, 1],
+      onUpdate: set,
+      onComplete: () => set(value),
+    })
     return () => c.stop()
   }, [inView, value, decimals, still])
   return (
@@ -96,6 +110,11 @@ export function HeroStatCard({
             <stop offset="0.6" stopColor="#FFFFFF" stopOpacity="0.32" />
             <stop offset="1" stopColor="#FFFFFF" stopOpacity="0.08" />
           </linearGradient>
+          <linearGradient id="hero-gloss" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.42" />
+            <stop offset="0.5" stopColor="#BFDBFE" stopOpacity="0.26" />
+            <stop offset="1" stopColor="#FFFFFF" stopOpacity="0.04" />
+          </linearGradient>
           <filter id="hero-blur">
             <feGaussianBlur stdDeviation="2.5" />
           </filter>
@@ -106,6 +125,16 @@ export function HeroStatCard({
           filter="url(#hero-blur)"
         />
         <circle cx="270" cy="30" r="70" fill="#FFFFFF" opacity="0.07" />
+        {/* Glossy curved edge (ref-cognify) */}
+        <path d="M228 -10 C300 50 318 150 262 240 L320 240 L320 -10Z" fill="url(#hero-gloss)" />
+        <path
+          d="M232 -6 C298 52 312 148 258 236"
+          stroke="#FFFFFF"
+          strokeOpacity="0.55"
+          strokeWidth="2"
+          fill="none"
+          filter="url(#hero-blur)"
+        />
       </svg>
       <p className="text-sm font-medium text-white/90">{label}</p>
       {value == null ? (
@@ -274,7 +303,7 @@ export function StatBanner({ stats, className }: { stats: BannerStat[]; classNam
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
                   <span className="num-display text-3xl leading-tight font-semibold">{s.value}</span>
                   {s.pct != null && (
-                    <span className="frost num rounded-full px-2 py-0.5 text-xs font-semibold">
+                    <span className="num text-primary-700 rounded-full bg-white px-2 py-0.5 text-xs font-semibold">
                       {Math.round(s.pct)}%
                     </span>
                   )}
