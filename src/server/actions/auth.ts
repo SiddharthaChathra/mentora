@@ -1,0 +1,74 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { createClient } from '@/server/supabase'
+import { serverEnv } from '@/server/env'
+import { AppError, handle } from '@/server/handle'
+import { rateLimit } from '@/server/rate-limit'
+import { forgotSchema, loginSchema, setPasswordSchema } from '@/lib/validators'
+import { ROLE_HOME } from '@/lib/roles'
+
+const GENERIC_LOGIN = 'That email and password combination didn’t work. Check both and try again.'
+
+export async function signIn(input: unknown) {
+  const res = await handle(async () => {
+    const { email, password, next } = loginSchema.parse(input)
+    await rateLimit('login', 10, 10 * 60_000)
+    const db = await createClient()
+    const { data, error } = await db.auth.signInWithPassword({ email, password })
+    if (error || !data.user) {
+      if (error?.status === 429) throw new AppError('RATE_LIMITED', 'Too many attempts. Please wait a few minutes and try again.')
+      throw new AppError('UNAUTHENTICATED', GENERIC_LOGIN)
+    }
+    // Role + status come from the database, never from the auth payload.
+    const { data: u } = await db.from('users').select('role, status, onboarding_completed_at').eq('id', data.user.id).maybeSingle()
+    if (!u) {
+      await db.auth.signOut()
+      throw new AppError('FORBIDDEN', 'Your account has not been set up yet. Please contact your HOD.')
+    }
+    if (u.status === 'SUSPENDED') return '/suspended'
+    if (u.status === 'INVITED') return '/accept-invite'
+    if (!u.onboarding_completed_at) return '/setup'
+    const home = ROLE_HOME[u.role]
+    return next && next.startsWith(home) && !next.startsWith('//') ? next : home
+  })
+  if (res.ok) redirect(res.data)
+  return res
+}
+
+export async function requestPasswordReset(input: unknown) {
+  return handle(async () => {
+    const { email } = forgotSchema.parse(input)
+    await rateLimit('forgot', 5, 15 * 60_000)
+    const db = await createClient()
+    // Always report success so the response never reveals whether an account exists.
+    await db.auth.resetPasswordForEmail(email, { redirectTo: `${serverEnv.siteUrl}/auth/confirm?type=recovery&next=/reset-password` })
+    return null
+  })
+}
+
+/** Used by both the reset-password and accept-invite flows (the email link already created a session). */
+export async function setNewPassword(input: unknown, mode: 'reset' | 'invite') {
+  const res = await handle(async () => {
+    const { password } = setPasswordSchema.parse(input)
+    await rateLimit('set-password', 10, 15 * 60_000)
+    const db = await createClient()
+    const { data: auth } = await db.auth.getUser()
+    if (!auth.user) throw new AppError('UNAUTHENTICATED', 'This link has expired. Request a new one.')
+    const { error } = await db.auth.updateUser({ password })
+    if (error) {
+      throw new AppError(
+        'BAD_REQUEST',
+        error.code === 'same_password' ? 'Choose a password you have not used before.' : 'We could not update your password. Try a stronger one.',
+      )
+    }
+    if (mode === 'invite') await db.rpc('activate_my_account')
+    const { data: u } = await db.from('users').select('role, status, onboarding_completed_at').eq('id', auth.user.id).maybeSingle()
+    if (!u) return '/login'
+    if (u.status === 'SUSPENDED') return '/suspended'
+    if (!u.onboarding_completed_at) return '/setup'
+    return ROLE_HOME[u.role]
+  })
+  if (res.ok) redirect(res.data)
+  return res
+}
