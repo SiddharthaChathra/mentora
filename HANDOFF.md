@@ -1,23 +1,22 @@
 # HANDOFF
 Date/time: 2026-10-25T16:10:00+05:30
 From model: Claude Opus 5.5 · Reason: long context
-Branch / last commit: feat/v2-sky-dashboard · 74f9428 V2.R6: RLS + e2e tests, v2 docs
+Branch / last commit: feat/v2-sky-dashboard · 7c38333 V2.R7: reference-driven polish + rubric score
 Design version: v2 Sky Dashboard (DESIGN.md)
 ## Where we are
-Phase V2 – Sky Dashboard redesign: slices done R1–R6; current slice R7 – score the rubric against the two reference images and polish anything below 9.
+Phase V2 – Sky Dashboard redesign: slices R1–R7 done (phase complete). Next phase: deploy (human MANUAL STEPS M2–M6).
 ## Current slice state
-- Done in this slice: nothing yet (R6 closed with all gates green).
-- Not done yet:
-  - Add `design/references/ref-cognify.png` + `ref-kouliah.png` (human, MANUAL STEP M1) then compare `/mentor`, `/hod`, `/mentee`, `/styleguide` at 1440/834/390.
-  - Cloud deploy MANUAL STEPS M2–M6 in DEPLOY.md (human).
-- Uncommitted changes: none (HANDOFF.md committed with this file).
+- Done: R7 reference comparison (design/references present), polish, rubric ≥ 9 at 1440/834/390.
+- Not done yet: cloud deploy M2–M6 in DEPLOY.md (human); PR from `feat/v2-sky-dashboard` only when the user asks.
+- Uncommitted changes: none.
 ## Gates
-typecheck pass · lint pass (0) · unit pass 55/55 · rls pass 11/11 · e2e pass 5/5 (`E2E_BASE_URL=http://localhost:3000 pnpm test:e2e`) · build pass
+typecheck pass · lint pass · unit 55/55 · rls 11/11 · e2e 5/5 · build pass (all re-run 2026-10-25)
 ## Next 3 actions (exact)
-1. After M1: screenshot `/mentor`, `/hod`, `/mentee` at 1440/834/390 (Playwright MCP, save under `.playwright-mcp/`), score Rubric v2 in PROGRESS.md – files: `src/app/(app)/{mentor,hod,mentee}/page.tsx` – acceptance: FEATURES "Rubric re-score".
-2. (Done in V2.R7a) CountUp SSR value fix.
-3. Open a PR from `feat/v2-sky-dashboard` only when the user asks; deploy per DEPLOY.md M2–M6.
+1. If the user asks for a PR: push `feat/v2-sky-dashboard` and open it (body ends with the Claude Code line) – no code changes.
+2. Assist the user through DEPLOY.md M2–M6; after deploy run `E2E_BASE_URL=<prod> pnpm test:e2e` – acceptance: FEATURES "Cloud deploy".
+3. Only on request: further UI polish — screenshot touched routes at 1440 + 390, keep rubric ≥ 9, never edit applied migrations.
 ## Watch out
+- Local dev needs Docker Desktop running; otherwise Supabase is down and logins fail (AuthRetryableFetchError).
 - RLS helpers in schema `app` must stay SECURITY DEFINER; never add FORCE RLS (breaks them).
 - Migrations 001–008 are applied locally; add new ones as 009+, never edit applied files. Run `pnpm db:types` after schema changes.
 - `'use server'` files may only export async functions (put shared helpers in `src/lib`).
