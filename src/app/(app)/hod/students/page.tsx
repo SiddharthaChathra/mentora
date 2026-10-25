@@ -4,6 +4,8 @@ import { ArrowDownUp } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { loadRoster, slim } from '@/server/services/roster'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { listSections } from '@/server/services/people'
 import { fmt2, fmtRelative } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
@@ -23,6 +25,8 @@ type SP = { q?: string; semester?: string; section?: string; year?: string; stat
 export default async function HodStudentsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const actor = await requireRole('HOD')
   const sp = await searchParams
+  const scope = await getSemesterScope()
+  const semester = sp.semester && sp.semester !== 'all' ? Number(sp.semester) : scope
   const page = Math.max(1, Number(sp.page) || 1)
   const db = await createClient()
   const sections = await listSections(db, actor.departmentId)
@@ -33,13 +37,13 @@ export default async function HodStudentsPage({ searchParams }: { searchParams: 
   if (sp.status && sp.status !== 'all') uq = uq.eq('status', sp.status as 'ACTIVE')
   const { data: users } = await uq
   let ids = (users ?? []).map((u) => u.id)
-  if (ids.length && (sp.q || (sp.semester && sp.semester !== 'all') || (sp.section && sp.section !== 'all') || (sp.completion && sp.completion !== 'all'))) {
+  if (ids.length && (sp.q || semester || (sp.section && sp.section !== 'all') || (sp.completion && sp.completion !== 'all'))) {
     let pq = db.from('student_profiles').select('user_id').in('user_id', ids)
     if (sp.q) {
       const like = `%${sp.q.replace(/[%_,()]/g, ' ').trim()}%`
       pq = pq.or(`full_name.ilike.${like},usn.ilike.${like}`)
     }
-    if (sp.semester && sp.semester !== 'all') pq = pq.eq('current_semester', Number(sp.semester))
+    if (semester) pq = pq.eq('current_semester', semester)
     if (sp.section && sp.section !== 'all') pq = pq.eq('section_id', sp.section)
     if (sp.completion === 'incomplete') pq = pq.lt('profile_completion', 100)
     if (sp.completion === 'complete') pq = pq.eq('profile_completion', 100)
@@ -87,11 +91,11 @@ export default async function HodStudentsPage({ searchParams }: { searchParams: 
           </>
         }
       />
+      <ScopeChip scope={semester} />
       <DirectoryToolbar
         storageKey="m_hod_student_filters"
         searchPlaceholder="Search name or USN…"
         filters={[
-          { param: 'semester', label: 'Semester', options: [{ value: 'all', label: 'All semesters' }, ...Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: `Semester ${i + 1}` }))] },
           { param: 'section', label: 'Section', options: [{ value: 'all', label: 'All sections' }, ...sections.map((s) => ({ value: s.id, label: `Section ${s.name}` }))] },
           { param: 'year', label: 'Academic year', options: [{ value: 'all', label: 'Any academic year' }, ...(years ?? []).map((y) => ({ value: y.label, label: y.label }))] },
           { param: 'risk', label: 'Risk', options: [{ value: 'all', label: 'Any status' }, { value: 'flagged', label: 'Flagged' }, { value: 'high', label: 'High priority' }, { value: 'none', label: 'On track' }, { value: 'unassigned', label: 'No mentor' }] },

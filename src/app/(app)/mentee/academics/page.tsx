@@ -4,6 +4,8 @@ import { createClient } from '@/server/supabase'
 import { loadStudentAcademics } from '@/server/services/academics'
 import { getSettings, getStudentProfile } from '@/server/services/people'
 import { PageHeader } from '@/components/ui/page-header'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { Card, CardBody } from '@/components/ui/primitives'
 import { EmptyState } from '@/components/ui/states'
 import { CreditProgress } from '@/components/charts/academic'
@@ -16,7 +18,8 @@ export const metadata: Metadata = { title: 'Academic records' }
 export default async function MenteeAcademicsPage() {
   const actor = await requireRole('MENTEE')
   const db = await createClient()
-  const [academics, profile, settings] = await Promise.all([loadStudentAcademics(db, actor.id, actor.departmentId), getStudentProfile(db, actor.id), getSettings(db)])
+  const [academics, profile, settings, scope] = await Promise.all([loadStudentAcademics(db, actor.id, actor.departmentId), getStudentProfile(db, actor.id), getSettings(db), getSemesterScope()])
+  const shown = scope ? academics.semesters.filter((s) => s.semesterNo === scope) : academics.semesters
   const existing = academics.semesters.map((s) => s.semesterNo)
   const maxSemester = Math.max(profile?.currentSemester ?? 8, ...existing, 1)
   const add = <AddSemesterButton existing={existing} maxSemester={maxSemester} admissionYear={profile?.admissionYear ?? null} hrefBase="/mentee/academics" />
@@ -24,6 +27,7 @@ export default async function MenteeAcademicsPage() {
   return (
     <>
       <PageHeader title="Academic" accent="records" description="Semester-wise subjects, marks and grades. Drafts are yours to edit; submitted semesters are verified by your mentor." actions={add} />
+      <ScopeChip scope={scope} label={shown.length ? `Showing semester ${scope} only.` : `You haven’t added semester ${scope} yet.`} />
       {academics.semesters.length === 0 ? (
         <Card>
           <EmptyState
@@ -71,7 +75,7 @@ export default async function MenteeAcademicsPage() {
             <h2 id="sem-heading" className="mb-3 text-base font-semibold text-ink-900">
               Semesters
             </h2>
-            <SemesterCards semesters={[...academics.semesters].reverse()} hrefBase="/mentee/academics" />
+            <SemesterCards semesters={[...shown].reverse()} hrefBase="/mentee/academics" />
           </section>
         </div>
       )}

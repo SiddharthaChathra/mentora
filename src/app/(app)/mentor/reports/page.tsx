@@ -4,6 +4,9 @@ import { Download, Eye, FileText } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { listMentees } from '@/server/services/people'
+import { getSemesterScope } from '@/server/scope'
+import { inScope } from '@/lib/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { PageHeader } from '@/components/ui/page-header'
 import { Avatar } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
@@ -15,7 +18,8 @@ export const metadata: Metadata = { title: 'PDF reports' }
 export default async function MentorReportsPage() {
   const actor = await requireRole('MENTOR')
   const db = await createClient()
-  const mentees = await listMentees(db, actor.id)
+  const scope = await getSemesterScope()
+  const mentees = inScope(await listMentees(db, actor.id), scope)
   const ids = mentees.map((m) => m.id)
   const { data: verified } = ids.length ? await db.from('academic_semesters').select('student_id').in('student_id', ids).in('status', ['VERIFIED', 'FINALIZED']) : { data: [] }
   const count = new Map<string, number>()
@@ -23,6 +27,7 @@ export default async function MentorReportsPage() {
   return (
     <>
       <PageHeader title="Student" accent="reports" description="Professional, print-ready PDFs generated only from verified records and the mentoring items you mark for inclusion. Charts, insights and risk flags are never included." />
+      <ScopeChip scope={scope} />
       <Card className="mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
         <IconChip icon={FileText} tone="brand" size="lg" />
         <div className="text-sm text-ink-700">

@@ -5,6 +5,9 @@ import { AlertTriangle, CalendarDays, ClipboardCheck } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { listMentees } from '@/server/services/people'
+import { getSemesterScope } from '@/server/scope'
+import { inScope } from '@/lib/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { loadRoster, slim } from '@/server/services/roster'
 import { listSessions } from '@/server/services/mentoring'
 import { mentorNextStep } from '@/server/services/next-step'
@@ -33,17 +36,23 @@ const TILE_SNAP = 'min-w-[80%] snap-start sm:min-w-0'
 export default async function MentorOverview() {
   const actor = await requireRole('MENTOR')
   const db = await createClient()
-  const mentees = await listMentees(db, actor.id)
+  const scope = await getSemesterScope()
+  const mentees = inScope(await listMentees(db, actor.id), scope)
   const now = new Date()
   const weekStart = startOfWeek(now, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
-  const [roster, sessions, { count: pendingCr }, { data: followups }, { data: recs }] = await Promise.all([
+  const [roster, allSessions, { count: pendingCr }, { data: allFollowups }, { data: allRecs }] = await Promise.all([
     loadRoster(db, mentees.map((m) => m.id), actor.departmentId),
-    listSessions(db, { mentorId: actor.id, from: new Date(now.getTime() - 3600_000).toISOString(), limit: 12, order: 'asc' }),
+    listSessions(db, { mentorId: actor.id, from: new Date(now.getTime() - 3600_000).toISOString(), limit: 50, order: 'asc' }),
     db.from('record_change_requests').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
     db.from('intervention_followups').select('id, student_id, note, created_at').eq('mentor_id', actor.id).eq('status', 'OPEN'),
-    db.from('mentor_recommendations').select('status, created_at').eq('mentor_id', actor.id).limit(2000),
+    db.from('mentor_recommendations').select('status, created_at, student_id').eq('mentor_id', actor.id).limit(2000),
   ])
+  // Semester scope: keep only items about students in scope (group sessions always stay).
+  const inScopeIds = new Set(mentees.map((m) => m.id))
+  const sessions = scope ? allSessions.filter((s) => !s.studentId || inScopeIds.has(s.studentId)) : allSessions
+  const followups = scope ? (allFollowups ?? []).filter((f) => inScopeIds.has(f.student_id)) : allFollowups
+  const recs = scope ? (allRecs ?? []).filter((r) => inScopeIds.has(r.student_id)) : allRecs
   const attention = roster.filter((r) => r.risk !== 'none').sort((a, b) => (a.risk === 'high' ? -1 : 0) - (b.risk === 'high' ? -1 : 0) || b.flags.length - a.flags.length)
   const topReason = attention[0]?.flags[0]?.reason
   const overdue = roster.reduce((n, r) => n + r.openFollowUps, 0)
@@ -80,6 +89,7 @@ export default async function MentorOverview() {
           </Link>
         </div>
       </header>
+      <ScopeChip scope={scope} />
 
       <div className="space-y-5">
         <section className="grid gap-5 lg:grid-cols-12" aria-label="Summary">

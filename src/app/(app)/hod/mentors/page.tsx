@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { loadDepartment } from '@/server/services/department'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { fmtRelative } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
 import { Avatar } from '@/components/ui/avatar'
@@ -17,7 +19,8 @@ export default async function HodMentorsPage({ searchParams }: { searchParams: P
   const actor = await requireRole('HOD')
   const sp = await searchParams
   const db = await createClient()
-  const { mentors, roster } = await loadDepartment(db, actor)
+  const scope = await getSemesterScope()
+  const { mentors, roster } = await loadDepartment(db, actor, scope)
   const riskBy = new Map(roster.map((r) => [r.id, r.risk]))
   const q = sp.q?.toLowerCase()
   const shown = mentors.filter(
@@ -38,6 +41,7 @@ export default async function HodMentorsPage({ searchParams }: { searchParams: P
           </Link>
         }
       />
+      <ScopeChip scope={scope} />
       <DirectoryToolbar
         storageKey="m_hod_mentor_filters"
         searchPlaceholder="Search name, faculty ID or expertise…"

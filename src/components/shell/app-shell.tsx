@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
 import { Command } from 'cmdk'
 import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, Clock, Compass, Keyboard, LogOut, Menu as MenuIcon, Plus, Search, Settings, Sparkles, UserRound, Wifi } from 'lucide-react'
+import { isScopedRoute } from '@/lib/scope'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/lib/roles'
 import { useLocalStorage } from '@/lib/hooks'
@@ -184,7 +185,7 @@ export function AppShell({
                 <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Search" className="grid size-11 place-items-center rounded-full bg-surface-muted text-ink-700 md:hidden">
                   <Search className="size-5" />
                 </button>
-                <SemesterSwitcher value={semester} />
+                {isScopedRoute(pathname) && <SemesterSwitcher value={semester} />}
                 {aiEnabled && user.role === 'MENTOR' && (
                   <Link href="/mentor/mentees?ai=1" className="hidden h-11 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-ink-900 hover:border-primary-300 hover:text-primary-700 lg:inline-flex">
                     <Sparkles className="size-4 text-primary-600" /> AI Assistant
@@ -344,9 +345,9 @@ function SemesterSwitcher({ value }: { value: number | null }) {
     router.refresh()
   }
   return (
-    <label data-tour="semester" className="relative hidden sm:inline-flex">
+    <label data-tour="semester" className="relative inline-flex">
       <span className="sr-only">Semester</span>
-      <select value={value ?? ''} onChange={(e) => set(e.target.value)} className="h-11 cursor-pointer appearance-none rounded-full border border-line bg-surface pr-9 pl-4 text-sm font-semibold text-ink-900 outline-none hover:border-primary-300 focus-visible:border-primary-600">
+      <select value={value ?? ''} onChange={(e) => set(e.target.value)} className="h-10 max-w-[8.5rem] cursor-pointer appearance-none truncate rounded-full border border-line bg-surface pr-8 pl-3 text-xs font-semibold text-ink-900 outline-none hover:border-primary-300 focus-visible:border-primary-600 sm:h-11 sm:max-w-none sm:pr-9 sm:pl-4 sm:text-sm">
         <option value="">All semesters</option>
         {Array.from({ length: 8 }, (_, i) => (
           <option key={i + 1} value={i + 1}>
@@ -354,7 +355,7 @@ function SemesterSwitcher({ value }: { value: number | null }) {
           </option>
         ))}
       </select>
-      <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-ink-500" />
+      <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-500 sm:right-3.5" />
     </label>
   )
 }

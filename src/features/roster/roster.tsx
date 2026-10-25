@@ -119,7 +119,6 @@ export function RosterBrowser({
   const [f, setF] = React.useState<Filters>({ ...DEFAULT_FILTERS, ...initial })
   const saved = useSavedViews('m_roster_saved')
   const activeQuery = filterQuery(f)
-  const semesters = [...new Set(rows.map((r) => r.currentSemester).filter(Boolean))].sort() as number[]
   const sections = [...new Set(rows.map((r) => r.sectionName).filter(Boolean))].sort() as string[]
   const shown = rows.filter(
     (r) =>
@@ -145,14 +144,6 @@ export function RosterBrowser({
               className="h-10 w-full rounded-full border border-line bg-surface pr-4 pl-10 text-sm shadow-1 outline-none focus:border-primary-500 focus:shadow-[0_0_0_4px_var(--primary-100)]"
             />
           </div>
-          <select aria-label="Semester" value={f.semester} onChange={(e) => setF({ ...f, semester: e.target.value })} className={sel}>
-            <option value="all">All semesters</option>
-            {semesters.map((s) => (
-              <option key={s} value={String(s)}>
-                Semester {s}
-              </option>
-            ))}
-          </select>
           {sections.length > 1 && (
             <select aria-label="Section" value={f.section} onChange={(e) => setF({ ...f, section: e.target.value })} className={sel}>
               <option value="all">All sections</option>

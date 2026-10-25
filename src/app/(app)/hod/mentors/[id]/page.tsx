@@ -6,6 +6,8 @@ import { Mail, Phone } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { loadDepartment } from '@/server/services/department'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { listSessions } from '@/server/services/mentoring'
 import { fmtRelative } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
@@ -25,7 +27,8 @@ export default async function HodMentorPage({ params }: { params: Promise<{ id: 
   const id = z.uuid().safeParse((await params).id)
   if (!id.success) notFound()
   const db = await createClient()
-  const { mentors, roster } = await loadDepartment(db, actor)
+  const scope = await getSemesterScope()
+  const { mentors, roster } = await loadDepartment(db, actor, scope)
   const m = mentors.find((x) => x.id === id.data)
   if (!m) notFound()
   const [{ data: profile }, sessions, { count: recCount }] = await Promise.all([
@@ -47,6 +50,7 @@ export default async function HodMentorPage({ params }: { params: Promise<{ id: 
           </Link>
         }
       />
+      <ScopeChip scope={scope} />
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card>
           <CardBody>

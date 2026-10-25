@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { loadVerificationQueues } from '@/server/services/verifications'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { PageHeader } from '@/components/ui/page-header'
 import { TabLinks } from '@/components/ui/navigation'
 import { CorrectionQueue, VerificationQueue } from '@/features/academics/verifications'
@@ -12,11 +14,15 @@ export default async function MentorVerificationsPage({ searchParams }: { search
   const actor = await requireRole('MENTOR')
   const tab = (await searchParams).tab === 'corrections' ? 'corrections' : 'submitted'
   const db = await createClient()
-  const { semesters, corrections } = await loadVerificationQueues(db, actor.departmentId, { history: tab === 'corrections' })
+  const scope = await getSemesterScope()
+  const queues = await loadVerificationQueues(db, actor.departmentId, { history: tab === 'corrections' })
+  const semesters = scope ? queues.semesters.filter((s) => s.semesterNo === scope) : queues.semesters
+  const corrections = scope ? queues.corrections.filter((c) => c.semesterNo === scope) : queues.corrections
   const pendingCorrections = corrections.filter((c) => c.status === 'PENDING')
   return (
     <>
       <PageHeader title="Record" accent="verifications" description="Check submitted semesters against official results, and review correction requests for verified records. Only your active mentees appear here." />
+      <ScopeChip scope={scope} label={`Showing semester ${scope} records only.`} />
       <TabLinks
         className="mb-6"
         tabs={[

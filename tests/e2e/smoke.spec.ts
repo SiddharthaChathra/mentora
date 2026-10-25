@@ -76,3 +76,19 @@ test('student can sign up and lands on setup', async ({ page }) => {
   await page.waitForURL('**/setup', { timeout: 60_000 })
 })
 
+
+test('HOD semester switcher filters department pages', async ({ page }) => {
+  await login(page, process.env.SEED_HOD_EMAIL!, process.env.SEED_HOD_PASSWORD!)
+  await page.waitForURL('**/hod')
+  await skipTour(page)
+  await page.goto('/hod/students')
+  const total = Number((await page.getByText(/\d+ students? match/).first().innerText()).match(/\d+/)![0])
+  await page.locator('select:has(option:text("All semesters"))').first().selectOption('3')
+  await expect(page.getByText('Show all semesters')).toBeVisible()
+  const scoped = Number((await page.getByText(/\d+ students? match/).first().innerText()).match(/\d+/)![0])
+  expect(scoped).toBeLessThan(total)
+  await page.goto('/hod/mentors')
+  await expect(page.getByText('Show all semesters')).toBeVisible()
+  await page.getByRole('button', { name: 'Show all semesters' }).click()
+  await expect(page.getByText('Show all semesters')).toHaveCount(0)
+})

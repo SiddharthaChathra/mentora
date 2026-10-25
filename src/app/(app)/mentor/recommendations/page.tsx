@@ -4,6 +4,9 @@ import { Lock } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { listMentees } from '@/server/services/people'
+import { getSemesterScope } from '@/server/scope'
+import { inScope } from '@/lib/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { CATEGORY_LABEL, KIND_LABEL } from '@/lib/labels'
 import { fmtDate, fmtRelative } from '@/lib/utils'
 import { PageHeader } from '@/components/ui/page-header'
@@ -21,7 +24,8 @@ export default async function MentorRecommendationsPage({ searchParams }: { sear
   const sp = await searchParams
   const page = Math.max(1, Number(sp.page) || 1)
   const db = await createClient()
-  const mentees = await listMentees(db, actor.id)
+  const scope = await getSemesterScope()
+  const mentees = inScope(await listMentees(db, actor.id), scope)
   const ids = mentees.map((m) => m.id)
   const names = new Map(mentees.map((m) => [m.id, m.name]))
   const today = new Date().toISOString().slice(0, 10)
@@ -49,6 +53,7 @@ export default async function MentorRecommendationsPage({ searchParams }: { sear
           </Link>
         }
       />
+      <ScopeChip scope={scope} />
       <div className="mb-5 space-y-3">
         <FilterChips
           param="status"

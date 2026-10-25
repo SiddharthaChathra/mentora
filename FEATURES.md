@@ -36,7 +36,7 @@
 - [ ] Cloud deploy — MANUAL STEPS in DEPLOY.md
 
 ## UX v2 (Sky Dashboard)
-- [x] UX2-01 Global semester switcher (cookie, every dashboard respects it)
+- [x] UX2-01 Global semester switcher (cookie): mentor/HOD pages filter to students currently in that semester (rosters, counts, workload, charts, verifications, recommendations, reports); student overview/academics/analytics focus on it; "Filtered to Semester N · Show all" chip; hidden on pages it doesn't affect; visible on mobile
 - [x] UX2-02 Command palette with recent searches
 - [x] UX2-03 Next-step card (one, dismissible, data-driven, per role)
 - [x] UX2-04 Drill-down: tiles, subject/section bars and donut slices open filtered lists

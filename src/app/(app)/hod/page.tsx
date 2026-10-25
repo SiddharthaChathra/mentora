@@ -4,6 +4,8 @@ import { FileWarning, LifeBuoy, ShieldAlert, UserX, Users } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { loadDepartment } from '@/server/services/department'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { hodNextStep } from '@/server/services/next-step'
 import { sectionBars, sectionRanks, sectionSgpa } from '@/server/services/dashboard'
 import { firstName, fmtDate } from '@/lib/utils'
@@ -25,7 +27,8 @@ const TILE_SNAP = 'min-w-[80%] snap-start sm:min-w-0'
 export default async function HodOverview() {
   const actor = await requireRole('HOD')
   const db = await createClient()
-  const [{ roster, mentors }, { data: openFollowups }] = await Promise.all([loadDepartment(db, actor), db.from('intervention_followups').select('student_id').eq('status', 'OPEN')])
+  const scope = await getSemesterScope()
+  const [{ roster, mentors }, { data: openFollowups }] = await Promise.all([loadDepartment(db, actor, scope), db.from('intervention_followups').select('student_id').eq('status', 'OPEN')])
   const active = mentors.filter((m) => m.status === 'ACTIVE')
   const invited = mentors.filter((m) => m.status === 'INVITED').length
   const assigned = roster.filter((r) => r.mentorId).length
@@ -57,6 +60,7 @@ export default async function HodOverview() {
           </Link>
         </div>
       </header>
+      <ScopeChip scope={scope} />
 
       <div className="space-y-5">
         <section className="grid gap-5 lg:grid-cols-12" aria-label="Summary">

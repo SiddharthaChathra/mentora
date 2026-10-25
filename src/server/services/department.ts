@@ -1,6 +1,7 @@
 import 'server-only'
 import type { DB } from '@/server/supabase'
 import type { Actor } from '@/server/authz'
+import { inScope } from '@/lib/scope'
 import { loadRoster } from './roster'
 
 export type MentorRow = {
@@ -18,8 +19,11 @@ export type MentorRow = {
   lastActivity: string | null
 }
 
-/** All mentees + mentors of the HOD's department (RLS scopes to department). */
-export async function loadDepartment(db: DB, actor: Actor) {
+/**
+ * All mentees + mentors of the HOD's department (RLS scopes to department).
+ * With a semester scope, the roster and each mentor's mentee list cover only students currently in that semester.
+ */
+export async function loadDepartment(db: DB, actor: Actor, scope: number | null = null) {
   const [{ data: students }, { data: mentorUsers }, { data: assignments }] = await Promise.all([
     db.from('users').select('id').eq('role', 'MENTEE').eq('department_id', actor.departmentId!).neq('status', 'SUSPENDED'),
     db.from('users').select('id, email, status').eq('role', 'MENTOR').eq('department_id', actor.departmentId!),
@@ -65,6 +69,8 @@ export async function loadDepartment(db: DB, actor: Actor) {
     })
     .sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email))
 
-  const roster = await loadRoster(db, (students ?? []).map((s) => s.id), actor.departmentId)
-  return { roster, mentors }
+  const roster = inScope(await loadRoster(db, (students ?? []).map((s) => s.id), actor.departmentId), scope)
+  if (!scope) return { roster, mentors }
+  const inRoster = new Set(roster.map((r) => r.id))
+  return { roster, mentors: mentors.map((m) => ({ ...m, mentees: m.mentees.filter((id) => inRoster.has(id)) })) }
 }

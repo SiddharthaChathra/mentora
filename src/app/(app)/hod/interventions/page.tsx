@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { loadDepartment } from '@/server/services/department'
+import { getSemesterScope } from '@/server/scope'
+import { ScopeChip } from '@/components/shell/scope-chip'
 import { PageHeader } from '@/components/ui/page-header'
 import { InterventionsBoard, type InterventionRow } from '@/features/admin/interventions'
 
@@ -10,7 +12,8 @@ export const metadata: Metadata = { title: 'Interventions' }
 export default async function HodInterventionsPage() {
   const actor = await requireRole('HOD')
   const db = await createClient()
-  const { roster } = await loadDepartment(db, actor)
+  const scope = await getSemesterScope()
+  const { roster } = await loadDepartment(db, actor, scope)
   const flagged = roster.filter((r) => r.risk !== 'none')
   const { data: followups } = flagged.length
     ? await db.from('intervention_followups').select('id, student_id, note, created_at').eq('status', 'OPEN').in('student_id', flagged.map((f) => f.id))
@@ -38,6 +41,7 @@ export default async function HodInterventionsPage() {
         accent="intervention"
         description={`${rows.length} student${rows.length === 1 ? '' : 's'} flagged by transparent rules you control in Settings. Every flag lists its reason — select students to ask their mentors to follow up.`}
       />
+      <ScopeChip scope={scope} />
       <InterventionsBoard rows={rows} />
     </>
   )
