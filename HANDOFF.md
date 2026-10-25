@@ -15,7 +15,7 @@ Phase V2 – Sky Dashboard redesign: slices done R1–R6; current slice R7 – s
 typecheck pass · lint pass (0) · unit pass 55/55 · rls pass 11/11 · e2e pass 5/5 (`E2E_BASE_URL=http://localhost:3000 pnpm test:e2e`) · build pass
 ## Next 3 actions (exact)
 1. After M1: screenshot `/mentor`, `/hod`, `/mentee` at 1440/834/390 (Playwright MCP, save under `.playwright-mcp/`), score Rubric v2 in PROGRESS.md – files: `src/app/(app)/{mentor,hod,mentee}/page.tsx` – acceptance: FEATURES "Rubric re-score".
-2. Optional polish: CountUp renders 0 in SSR until in view — consider SSR-rendering the final value – files: `src/components/ui/display.tsx` (CountUp) – acceptance: UX2-15.
+2. (Done in V2.R7a) CountUp SSR value fix.
 3. Open a PR from `feat/v2-sky-dashboard` only when the user asks; deploy per DEPLOY.md M2–M6.
 ## Watch out
 - RLS helpers in schema `app` must stay SECURITY DEFINER; never add FORCE RLS (breaks them).

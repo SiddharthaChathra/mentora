@@ -18,31 +18,36 @@ import type { GlossaryTerm } from '@/lib/glossary'
 import { DeltaChip } from './primitives'
 import { HelpTip } from './help-tip'
 
-/** Animated count-up, once, on first view. Static under reduced motion / low bandwidth. */
-export function CountUp({
-  value,
-  decimals = 0,
-  className,
-}: {
-  value: number
-  decimals?: number
-  className?: string
-}) {
+const formatCount = (v: number, decimals: number) => v.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+
+/**
+ * Count-up that is server-rendered with the real value (no "0" flash, works without JS).
+ * Only counters that start below the fold animate, once, when scrolled into view; static under reduced motion / low bandwidth.
+ */
+export function CountUp({ value, decimals = 0, className }: { value: number; decimals?: number; className?: string }) {
   const ref = React.useRef<HTMLSpanElement>(null)
+  const belowFold = React.useRef(false)
   const inView = useInView(ref, { once: true })
   const reduce = useReducedMotion()
   const { lowBandwidth } = useLowBandwidth()
   const still = !!reduce || lowBandwidth
-  const [shown, setShown] = React.useState(0)
   React.useEffect(() => {
-    if (!inView || still) return
-    const c = animate(0, value, { duration: 0.9, ease: [0.2, 0.8, 0.2, 1], onUpdate: setShown })
+    const el = ref.current
+    if (el) belowFold.current = el.getBoundingClientRect().top > window.innerHeight
+  }, [])
+  React.useEffect(() => {
+    const el = ref.current
+    if (!inView || still || !el || !belowFold.current) return
+    // Write into React's own text node so later re-renders still update it.
+    const text = el.firstChild
+    if (!text) return
+    const set = (v: number) => (text.nodeValue = formatCount(v, decimals))
+    const c = animate(0, value, { duration: 0.9, ease: [0.2, 0.8, 0.2, 1], onUpdate: set, onComplete: () => set(value) })
     return () => c.stop()
-  }, [inView, value, still])
-  const v = still ? value : shown
+  }, [inView, value, decimals, still])
   return (
     <span ref={ref} className={cn('num-display', className)}>
-      {v.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+      {formatCount(value, decimals)}
     </span>
   )
 }
