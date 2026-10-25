@@ -149,8 +149,15 @@ export function MenuItem({
       )}
       {...props}
     >
-      {Icon && <Icon className="size-4 shrink-0 text-current opacity-80" />}
-      {children}
+      {/* asChild needs exactly one child element, so the icon slot is only rendered for plain items. */}
+      {props.asChild ? (
+        children
+      ) : (
+        <>
+          {Icon && <Icon className="size-4 shrink-0 text-current opacity-80" />}
+          {children}
+        </>
+      )}
     </DM.Item>
   )
 }

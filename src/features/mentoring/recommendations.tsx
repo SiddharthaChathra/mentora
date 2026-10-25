@@ -3,7 +3,19 @@
 import * as React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { CalendarDays, CheckCircle2, CornerDownRight, EyeOff, FileText, Lock, MessageSquarePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
+import {
+  CalendarDays,
+  CheckCircle2,
+  CornerDownRight,
+  EyeOff,
+  FileText,
+  Lock,
+  MessageSquarePlus,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useSyncedState } from '@/lib/hooks'
 import { cn, fmtDate, fmtRelative } from '@/lib/utils'
 import { CATEGORY_LABEL, KIND_LABEL } from '@/lib/labels'
@@ -39,12 +51,21 @@ const STATUS_OPTIONS = [
 function useAction() {
   const router = useRouter()
   return React.useCallback(
-    async (fn: () => Promise<{ ok: boolean; error?: { message: string } }>, success?: string, undo?: () => Promise<unknown>) => {
+    async (
+      fn: () => Promise<{ ok: boolean; error?: { message: string } }>,
+      success?: string,
+      undo?: () => Promise<unknown>,
+    ) => {
       const res = await fn()
       if (res.ok) {
         // UX2-07: reversible changes get an Undo instead of a confirm dialog.
         if (success)
-          toast.success(success, undo ? { action: { label: 'Undo', onClick: () => void undo().then(() => router.refresh()) } } : undefined)
+          toast.success(
+            success,
+            undo
+              ? { action: { label: 'Undo', onClick: () => void undo().then(() => router.refresh()) } }
+              : undefined,
+          )
         router.refresh()
         return true
       }
@@ -71,11 +92,22 @@ export function MentoringWorkspace({
   canWrite: boolean
 }) {
   const sp = useSearchParams()
-  const [view, setView] = React.useState<'feedback' | 'plan' | 'board'>((sp.get('tab') as 'plan' | 'board') === 'plan' ? 'plan' : sp.get('tab') === 'board' ? 'board' : 'feedback')
+  const [view, setView] = React.useState<'feedback' | 'plan' | 'board'>(
+    (sp.get('tab') as 'plan' | 'board') === 'plan'
+      ? 'plan'
+      : sp.get('tab') === 'board'
+        ? 'board'
+        : 'feedback',
+  )
   const [status, setStatus] = React.useState<string>('all')
   const [category, setCategory] = React.useState<string>('all')
   const [openId, setOpenId] = React.useState<string | null>(sp.get('item'))
-  const [composer, setComposer] = React.useState<{ open: boolean; edit?: Recommendation; parent?: Recommendation; kind?: string }>(() => ({ open: sp.get('action') === 'recommend' && canWrite }))
+  const [composer, setComposer] = React.useState<{
+    open: boolean
+    edit?: Recommendation
+    parent?: Recommendation
+    kind?: string
+  }>(() => ({ open: sp.get('action') === 'recommend' && canWrite }))
   const run = useAction()
 
   const flat = React.useMemo(() => items.flatMap((i) => [i, ...i.followUps]), [items])
@@ -87,8 +119,15 @@ export function MentoringWorkspace({
   }, [open, viewer])
 
   const filtered = items.filter((i) => {
-    const inView = view === 'plan' ? (PLAN_KINDS as readonly string[]).includes(i.kind) : view === 'feedback' ? !(PLAN_KINDS as readonly string[]).includes(i.kind) : true
-    return inView && (status === 'all' || i.status === status) && (category === 'all' || i.category === category)
+    const inView =
+      view === 'plan'
+        ? (PLAN_KINDS as readonly string[]).includes(i.kind)
+        : view === 'feedback'
+          ? !(PLAN_KINDS as readonly string[]).includes(i.kind)
+          : true
+    return (
+      inView && (status === 'all' || i.status === status) && (category === 'all' || i.category === category)
+    )
   })
 
   return (
@@ -107,7 +146,12 @@ export function MentoringWorkspace({
         <div className="flex flex-wrap items-center gap-2">
           {view !== 'board' && (
             <>
-              <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-full border border-line bg-surface px-4 text-sm shadow-1">
+              <select
+                aria-label="Filter by status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="border-line bg-surface shadow-1 h-10 rounded-full border px-4 text-sm"
+              >
                 <option value="all">All statuses</option>
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -115,7 +159,12 @@ export function MentoringWorkspace({
                   </option>
                 ))}
               </select>
-              <select aria-label="Filter by category" value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 rounded-full border border-line bg-surface px-4 text-sm shadow-1">
+              <select
+                aria-label="Filter by category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="border-line bg-surface shadow-1 h-10 rounded-full border px-4 text-sm"
+              >
                 <option value="all">All categories</option>
                 {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -126,7 +175,20 @@ export function MentoringWorkspace({
             </>
           )}
           {viewer === 'MENTEE' && unseen.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => run(() => markSeen('recommendation', unseen.map((u) => u.id)), 'Marked as seen')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                run(
+                  () =>
+                    markSeen(
+                      'recommendation',
+                      unseen.map((u) => u.id),
+                    ),
+                  'Marked as seen',
+                )
+              }
+            >
               <CheckCircle2 /> Mark all as seen
             </Button>
           )}
@@ -144,20 +206,42 @@ export function MentoringWorkspace({
         <EmptyState
           illustration="no-feedback"
           title={view === 'plan' ? 'No goals yet' : 'No feedback yet'}
-          description={canWrite ? 'Write the first one — it’s shared with the student unless you mark it private.' : viewer === 'MENTEE' ? 'Your mentor’s recommendations and goals will appear here.' : 'Nothing recorded yet.'}
-          action={canWrite && <Button onClick={() => setComposer({ open: true, kind: view === 'plan' ? 'GOAL' : undefined })}>{view === 'plan' ? 'Set a goal' : 'Write a recommendation'}</Button>}
+          description={
+            canWrite
+              ? 'Write the first one — it’s shared with the student unless you mark it private.'
+              : viewer === 'MENTEE'
+                ? 'Your mentor’s recommendations and goals will appear here.'
+                : 'Nothing recorded yet.'
+          }
+          action={
+            canWrite && (
+              <Button onClick={() => setComposer({ open: true, kind: view === 'plan' ? 'GOAL' : undefined })}>
+                {view === 'plan' ? 'Set a goal' : 'Write a recommendation'}
+              </Button>
+            )
+          }
         />
       ) : (
         <ul className="stagger space-y-3">
           {filtered.map((i) => (
-            <RecRow key={i.id} item={i} viewer={viewer} onOpen={() => setOpenId(i.id)} plan={view === 'plan'} />
+            <RecRow
+              key={i.id}
+              item={i}
+              viewer={viewer}
+              onOpen={() => setOpenId(i.id)}
+              plan={view === 'plan'}
+            />
           ))}
         </ul>
       )}
 
       <Sheet open={!!open} onOpenChange={(o) => !o && setOpenId(null)}>
         {open && (
-          <SheetContent title={KIND_LABEL[open.kind]} description={CATEGORY_LABEL[open.category]} className="max-w-xl">
+          <SheetContent
+            title={KIND_LABEL[open.kind]}
+            description={CATEGORY_LABEL[open.category]}
+            className="max-w-xl"
+          >
             <Detail
               item={open}
               viewer={viewer}
@@ -181,13 +265,27 @@ export function MentoringWorkspace({
           edit={composer.edit}
           parent={composer.parent}
           defaultKind={composer.kind}
+          onSaved={(kind) =>
+            view !== 'board' &&
+            setView((PLAN_KINDS as readonly string[]).includes(kind) ? 'plan' : 'feedback')
+          }
         />
       )}
     </div>
   )
 }
 
-function RecRow({ item, viewer, onOpen, plan }: { item: Recommendation; viewer: Viewer; onOpen: () => void; plan: boolean }) {
+function RecRow({
+  item,
+  viewer,
+  onOpen,
+  plan,
+}: {
+  item: Recommendation
+  viewer: Viewer
+  onOpen: () => void
+  plan: boolean
+}) {
   const total = item.steps.length
   const done = item.steps.filter((s) => s.done).length
   return (
@@ -195,17 +293,44 @@ function RecRow({ item, viewer, onOpen, plan }: { item: Recommendation; viewer: 
       <button
         type="button"
         onClick={onOpen}
-        className="group flex w-full items-start gap-4 rounded-xl bg-surface p-4 text-left shadow-2 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-3 sm:p-5"
+        className="group bg-surface shadow-2 hover:shadow-3 flex w-full items-start gap-4 rounded-xl p-4 text-left transition-[transform,box-shadow] hover:-translate-y-0.5 sm:p-5"
       >
         {plan ? (
-          <ProgressRing value={item.status === 'COMPLETED' ? 100 : total ? (done / total) * 100 : item.status === 'IN_PROGRESS' ? 50 : 0} size={52} stroke={5} label={`${item.title} progress`} />
+          <ProgressRing
+            value={
+              item.status === 'COMPLETED'
+                ? 100
+                : total
+                  ? (done / total) * 100
+                  : item.status === 'IN_PROGRESS'
+                    ? 50
+                    : 0
+            }
+            size={52}
+            stroke={5}
+            label={`${item.title} progress`}
+          />
         ) : (
           <Avatar userId={item.mentorId} name={item.mentorName} hasImage={item.mentorHasAvatar} size="sm" />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Pill tone={item.kind === 'STRENGTH' ? 'success' : item.kind === 'IMPROVEMENT_AREA' ? 'warning' : item.kind === 'GOAL' ? 'brand' : item.kind === 'FEEDBACK' ? 'accent' : 'info'}>{KIND_LABEL[item.kind]}</Pill>
-            <span className="text-xs text-ink-500">{CATEGORY_LABEL[item.category]}</span>
+            <Pill
+              tone={
+                item.kind === 'STRENGTH'
+                  ? 'success'
+                  : item.kind === 'IMPROVEMENT_AREA'
+                    ? 'warning'
+                    : item.kind === 'GOAL'
+                      ? 'brand'
+                      : item.kind === 'FEEDBACK'
+                        ? 'accent'
+                        : 'info'
+              }
+            >
+              {KIND_LABEL[item.kind]}
+            </Pill>
+            <span className="text-ink-500 text-xs">{CATEGORY_LABEL[item.category]}</span>
             {item.visibility === 'PRIVATE_MENTOR' && (
               <Pill tone="neutral">
                 <Lock className="size-3" /> Private
@@ -213,9 +338,9 @@ function RecRow({ item, viewer, onOpen, plan }: { item: Recommendation; viewer: 
             )}
             {!item.seen && viewer === 'MENTEE' && <NewDot />}
           </div>
-          <p className="mt-2 font-medium text-ink-900 group-hover:text-primary-700">{item.title}</p>
-          {item.body && <p className="mt-1 line-clamp-2 text-sm text-ink-500">{item.body}</p>}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-500">
+          <p className="text-ink-900 group-hover:text-primary-700 mt-2 font-medium">{item.title}</p>
+          {item.body && <p className="text-ink-500 mt-1 line-clamp-2 text-sm">{item.body}</p>}
+          <div className="text-ink-500 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
             <StatusPill status={item.status} />
             {item.subject && <span className="num">{item.subject.code}</span>}
             {item.dueDate && (
@@ -228,7 +353,11 @@ function RecRow({ item, viewer, onOpen, plan }: { item: Recommendation; viewer: 
                 {done}/{total} steps
               </span>
             )}
-            {item.followUps.length > 0 && <span>{item.followUps.length} follow-up{item.followUps.length === 1 ? '' : 's'}</span>}
+            {item.followUps.length > 0 && (
+              <span>
+                {item.followUps.length} follow-up{item.followUps.length === 1 ? '' : 's'}
+              </span>
+            )}
             <span>{fmtRelative(item.createdAt)}</span>
           </div>
         </div>
@@ -240,27 +369,36 @@ function RecRow({ item, viewer, onOpen, plan }: { item: Recommendation; viewer: 
 function Board({ items, onOpen }: { items: Recommendation[]; onOpen: (id: string) => void }) {
   const cols = [
     { kind: 'STRENGTH', title: 'Strengths', tone: 'border-success-500', empty: 'No strengths recorded yet.' },
-    { kind: 'IMPROVEMENT_AREA', title: 'Improvement areas', tone: 'border-warning-500', empty: 'No improvement areas recorded.' },
+    {
+      kind: 'IMPROVEMENT_AREA',
+      title: 'Improvement areas',
+      tone: 'border-warning-500',
+      empty: 'No improvement areas recorded.',
+    },
   ] as const
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {cols.map((c) => {
         const list = items.filter((i) => i.kind === c.kind)
         return (
-          <section key={c.kind} className={cn('rounded-xl border-t-4 bg-surface p-5 shadow-2', c.tone)}>
-            <h3 className="font-semibold text-ink-900">
+          <section key={c.kind} className={cn('bg-surface shadow-2 rounded-xl border-t-4 p-5', c.tone)}>
+            <h3 className="text-ink-900 font-semibold">
               {c.title} <span className="num text-ink-500">{list.length}</span>
             </h3>
             <ul className="mt-4 space-y-2">
-              {list.length === 0 && <li className="text-sm text-ink-500">{c.empty}</li>}
+              {list.length === 0 && <li className="text-ink-500 text-sm">{c.empty}</li>}
               {list.map((i) => (
                 <li key={i.id}>
-                  <button type="button" onClick={() => onOpen(i.id)} className="w-full rounded-lg bg-surface-muted px-3.5 py-3 text-left hover:bg-surface-muted">
-                    <p className="text-sm font-medium text-ink-900">{i.title}</p>
-                    {i.body && <p className="mt-0.5 line-clamp-2 text-xs text-ink-500">{i.body}</p>}
+                  <button
+                    type="button"
+                    onClick={() => onOpen(i.id)}
+                    className="bg-surface-muted hover:bg-surface-muted w-full rounded-lg px-3.5 py-3 text-left"
+                  >
+                    <p className="text-ink-900 text-sm font-medium">{i.title}</p>
+                    {i.body && <p className="text-ink-500 mt-0.5 line-clamp-2 text-xs">{i.body}</p>}
                     <div className="mt-2 flex items-center gap-2">
                       <StatusPill status={i.status} />
-                      <span className="text-xs text-ink-500">{fmtDate(i.createdAt, 'd MMM yyyy')}</span>
+                      <span className="text-ink-500 text-xs">{fmtDate(i.createdAt, 'd MMM yyyy')}</span>
                     </div>
                   </button>
                 </li>
@@ -291,7 +429,8 @@ function Detail({
   const run = useAction()
   const [reflection, setReflection] = useSyncedState(item.reflection ?? '')
   const [confirmDelete, setConfirmDelete] = React.useState(false)
-  const studentCanUpdate = viewer === 'MENTEE' && ['GOAL', 'ACTION_POINT', 'RECOMMENDATION'].includes(item.kind)
+  const studentCanUpdate =
+    viewer === 'MENTEE' && ['GOAL', 'ACTION_POINT', 'RECOMMENDATION'].includes(item.kind)
   const canChangeStatus = canWrite || studentCanUpdate
 
   return (
@@ -300,12 +439,18 @@ function Detail({
         <div className="flex items-center gap-3">
           <Avatar userId={item.mentorId} name={item.mentorName} hasImage={item.mentorHasAvatar} size="sm" />
           <div>
-            <p className="text-sm font-semibold text-ink-900">{item.mentorName}</p>
-            <p className="text-xs text-ink-500">{fmtDate(item.createdAt, 'd MMM yyyy, h:mm a')}</p>
+            <p className="text-ink-900 text-sm font-semibold">{item.mentorName}</p>
+            <p className="text-ink-500 text-xs">{fmtDate(item.createdAt, 'd MMM yyyy, h:mm a')}</p>
           </div>
         </div>
-        <h3 className="mt-4 font-semibold tracking-tight text-[1.75rem] leading-tight text-ink-900">{item.title}</h3>
-        {item.body && <p className="mt-2 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-700">{item.body}</p>}
+        <h3 className="text-ink-900 mt-4 text-[1.75rem] leading-tight font-semibold tracking-tight">
+          {item.title}
+        </h3>
+        {item.body && (
+          <p className="text-ink-700 mt-2 text-[0.9375rem] leading-relaxed whitespace-pre-line">
+            {item.body}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           {item.subject && (
             <Pill tone="outline">
@@ -325,26 +470,22 @@ function Detail({
           )}
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-[12px] bg-surface-muted px-3 py-2">
-            <dt className="text-xs text-ink-500">Due</dt>
+          <div className="bg-surface-muted rounded-[12px] px-3 py-2">
+            <dt className="text-ink-500 text-xs">Due</dt>
             <dd className="text-ink-900">{fmtDate(item.dueDate)}</dd>
           </div>
-          <div className="rounded-[12px] bg-surface-muted px-3 py-2">
-            <dt className="text-xs text-ink-500">Review</dt>
+          <div className="bg-surface-muted rounded-[12px] px-3 py-2">
+            <dt className="text-ink-500 text-xs">Review</dt>
             <dd className="text-ink-900">{fmtDate(item.reviewDate)}</dd>
           </div>
         </dl>
       </div>
 
-      {canChangeStatus ? (
-        <StatusSelect item={item} run={run} />
-      ) : (
-        <StatusPill status={item.status} />
-      )}
+      {canChangeStatus ? <StatusSelect item={item} run={run} /> : <StatusPill status={item.status} />}
 
       {item.steps.length > 0 && (
         <section>
-          <h4 className="text-sm font-semibold text-ink-900">Steps</h4>
+          <h4 className="text-ink-900 text-sm font-semibold">Steps</h4>
           <ul className="mt-3 space-y-2.5">
             {item.steps.map((s) => (
               <li key={s.id}>
@@ -363,45 +504,67 @@ function Detail({
 
       {(studentCanUpdate || item.reflection) && (item.kind === 'GOAL' || item.kind === 'ACTION_POINT') && (
         <section>
-          <h4 className="text-sm font-semibold text-ink-900">Reflection</h4>
+          <h4 className="text-ink-900 text-sm font-semibold">Reflection</h4>
           {studentCanUpdate ? (
             <div className="mt-3 space-y-2">
-              <Textarea id="reflection" label="What worked, what’s next?" value={reflection} onChange={(e) => setReflection(e.target.value)} rows={3} />
-              <Button size="sm" variant="secondary" onClick={() => run(() => saveReflection(item.id, reflection), 'Reflection saved')}>
+              <Textarea
+                id="reflection"
+                label="What worked, what’s next?"
+                value={reflection}
+                onChange={(e) => setReflection(e.target.value)}
+                rows={3}
+              />
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => run(() => saveReflection(item.id, reflection), 'Reflection saved')}
+              >
                 Save reflection
               </Button>
             </div>
           ) : (
-            <p className="mt-2 rounded-lg bg-surface-muted p-3 text-sm text-ink-700">{item.reflection}</p>
+            <p className="bg-surface-muted text-ink-700 mt-2 rounded-lg p-3 text-sm">{item.reflection}</p>
           )}
         </section>
       )}
 
-      {canWrite && item.status === 'COMPLETED' && !item.completionConfirmedAt && (item.kind === 'GOAL' || item.kind === 'ACTION_POINT') && (
-        <div className="rounded-xl bg-success-100 p-4">
-          <p className="text-sm text-success-700">The student marked this complete.</p>
-          <Button size="sm" className="mt-2" onClick={() => run(() => confirmCompletion(item.id), 'Completion confirmed')}>
-            <CheckCircle2 /> Confirm completion
-          </Button>
-        </div>
+      {canWrite &&
+        item.status === 'COMPLETED' &&
+        !item.completionConfirmedAt &&
+        (item.kind === 'GOAL' || item.kind === 'ACTION_POINT') && (
+          <div className="bg-success-100 rounded-xl p-4">
+            <p className="text-success-700 text-sm">The student marked this complete.</p>
+            <Button
+              size="sm"
+              className="mt-2"
+              onClick={() => run(() => confirmCompletion(item.id), 'Completion confirmed')}
+            >
+              <CheckCircle2 /> Confirm completion
+            </Button>
+          </div>
+        )}
+      {item.completionConfirmedAt && (
+        <p className="text-success-700 text-sm">
+          Completion confirmed by mentor on {fmtDate(item.completionConfirmedAt)}.
+        </p>
       )}
-      {item.completionConfirmedAt && <p className="text-sm text-success-700">Completion confirmed by mentor on {fmtDate(item.completionConfirmedAt)}.</p>}
 
       {item.history.length > 0 && (
         <section>
-          <h4 className="text-sm font-semibold text-ink-900">History</h4>
-          <ol className="mt-3 space-y-2 border-l border-line pl-4">
+          <h4 className="text-ink-900 text-sm font-semibold">History</h4>
+          <ol className="border-line mt-3 space-y-2 border-l pl-4">
             {item.history.map((h, i) => (
-              <li key={i} className="relative text-sm text-ink-700">
-                <span className="absolute top-1.5 -left-[21px] size-2 rounded-full bg-primary-500" />
+              <li key={i} className="text-ink-700 relative text-sm">
+                <span className="bg-primary-500 absolute top-1.5 -left-[21px] size-2 rounded-full" />
                 {h.from ? (
                   <>
-                    {STATUS_OPTIONS.find((s) => s.value === h.from)?.label} → <span className="font-medium">{STATUS_OPTIONS.find((s) => s.value === h.to)?.label}</span>
+                    {STATUS_OPTIONS.find((s) => s.value === h.from)?.label} →{' '}
+                    <span className="font-medium">{STATUS_OPTIONS.find((s) => s.value === h.to)?.label}</span>
                   </>
                 ) : (
                   <>Created as {STATUS_OPTIONS.find((s) => s.value === h.to)?.label}</>
                 )}
-                <span className="ml-2 text-xs text-ink-500">{fmtDate(h.at, 'd MMM, h:mm a')}</span>
+                <span className="text-ink-500 ml-2 text-xs">{fmtDate(h.at, 'd MMM, h:mm a')}</span>
               </li>
             ))}
           </ol>
@@ -410,17 +573,17 @@ function Detail({
 
       {item.followUps.length > 0 && (
         <section>
-          <h4 className="text-sm font-semibold text-ink-900">Follow-ups</h4>
+          <h4 className="text-ink-900 text-sm font-semibold">Follow-ups</h4>
           <ul className="mt-3 space-y-2">
             {item.followUps.map((f) => (
-              <li key={f.id} className="flex gap-2 rounded-lg bg-surface-muted p-3 text-sm">
-                <CornerDownRight className="mt-0.5 size-4 shrink-0 text-ink-400" />
+              <li key={f.id} className="bg-surface-muted flex gap-2 rounded-lg p-3 text-sm">
+                <CornerDownRight className="text-ink-400 mt-0.5 size-4 shrink-0" />
                 <div>
-                  <p className="font-medium text-ink-900">{f.title}</p>
-                  {f.body && <p className="mt-0.5 text-ink-700">{f.body}</p>}
+                  <p className="text-ink-900 font-medium">{f.title}</p>
+                  {f.body && <p className="text-ink-700 mt-0.5">{f.body}</p>}
                   <div className="mt-1.5 flex items-center gap-2">
                     <StatusPill status={f.status} />
-                    <span className="text-xs text-ink-500">{fmtRelative(f.createdAt)}</span>
+                    <span className="text-ink-500 text-xs">{fmtRelative(f.createdAt)}</span>
                   </div>
                 </div>
               </li>
@@ -430,14 +593,19 @@ function Detail({
       )}
 
       {canWrite && (
-        <div className="flex flex-wrap gap-2 border-t border-line pt-5">
+        <div className="border-line flex flex-wrap gap-2 border-t pt-5">
           <Button variant="secondary" size="sm" onClick={onFollowUp}>
             <Plus /> Add follow-up
           </Button>
           <Button variant="secondary" size="sm" onClick={onEdit}>
             <Pencil /> Edit
           </Button>
-          <Button variant="ghost" size="sm" className="text-danger-700" onClick={() => setConfirmDelete(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-danger-700"
+            onClick={() => setConfirmDelete(true)}
+          >
             <Trash2 /> Delete
           </Button>
         </div>
@@ -469,8 +637,10 @@ function Composer({
   edit,
   parent,
   defaultKind,
+  onSaved,
 }: {
   open: boolean
+  onSaved?: (kind: string) => void
   onOpenChange: (v: boolean) => void
   studentId: string
   subjects: SubjectOpt[]
@@ -504,12 +674,17 @@ function Composer({
     const res = edit ? await updateRecommendation(edit.id, payload) : await createRecommendation(payload)
     setBusy(false)
     if (!res.ok) {
-      setErrors(Object.fromEntries(Object.entries(res.error.fieldErrors ?? {}).map(([k, m]) => [k, m[0] ?? ''])))
+      setErrors(
+        Object.fromEntries(Object.entries(res.error.fieldErrors ?? {}).map(([k, m]) => [k, m[0] ?? ''])),
+      )
       toast.error(res.error.message)
       return
     }
-    toast.success(edit ? 'Saved' : v.visibility === 'SHARED' ? 'Shared with the student' : 'Private note saved')
+    toast.success(
+      edit ? 'Saved' : v.visibility === 'SHARED' ? 'Shared with the student' : 'Private note saved',
+    )
     onOpenChange(false)
+    onSaved?.(v.kind)
     await run(async () => ({ ok: true }))
   }
 
@@ -517,7 +692,11 @@ function Composer({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title={edit ? 'Edit' : parent ? 'Add a follow-up' : 'New recommendation'}
-        description={parent ? `Following up on “${parent.title}”` : 'Structured, dated and trackable. Shared with the student unless you make it private.'}
+        description={
+          parent
+            ? `Following up on “${parent.title}”`
+            : 'Structured, dated and trackable. Shared with the student unless you make it private.'
+        }
         size="lg"
         footer={
           <>
@@ -532,7 +711,13 @@ function Composer({
       >
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Select id="c-kind" label="Type" value={v.kind} onChange={(e) => setV({ ...v, kind: e.target.value as typeof v.kind })} options={Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))} />
+            <Select
+              id="c-kind"
+              label="Type"
+              value={v.kind}
+              onChange={(e) => setV({ ...v, kind: e.target.value as typeof v.kind })}
+              options={Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))}
+            />
             <Select
               id="c-category"
               label="Category"
@@ -543,23 +728,71 @@ function Composer({
                 .map(([value, label]) => ({ value, label }))}
             />
           </div>
-          <Input id="c-title" label="Title" value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} error={errors.title} required />
-          <Textarea id="c-body" label="Details" rows={5} value={v.body} onChange={(e) => setV({ ...v, body: e.target.value })} error={errors.body} />
+          <Input
+            id="c-title"
+            label="Title"
+            value={v.title}
+            onChange={(e) => setV({ ...v, title: e.target.value })}
+            error={errors.title}
+            required
+          />
+          <Textarea
+            id="c-body"
+            label="Details"
+            rows={5}
+            value={v.body}
+            onChange={(e) => setV({ ...v, body: e.target.value })}
+            error={errors.body}
+          />
           <div className="grid gap-3 sm:grid-cols-3">
-            <Select id="c-subject" label="Linked subject" value={v.subject_id} onChange={(e) => setV({ ...v, subject_id: e.target.value })} options={subjects.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} placeholder="None" />
-            <Input id="c-due" type="date" label="Due date" value={v.due_date} onChange={(e) => setV({ ...v, due_date: e.target.value })} error={errors.due_date} />
-            <Input id="c-review" type="date" label="Review date" value={v.review_date} onChange={(e) => setV({ ...v, review_date: e.target.value })} error={errors.review_date} />
+            <Select
+              id="c-subject"
+              label="Linked subject"
+              value={v.subject_id}
+              onChange={(e) => setV({ ...v, subject_id: e.target.value })}
+              options={subjects.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))}
+              placeholder="None"
+            />
+            <Input
+              id="c-due"
+              type="date"
+              label="Due date"
+              value={v.due_date}
+              onChange={(e) => setV({ ...v, due_date: e.target.value })}
+              error={errors.due_date}
+            />
+            <Input
+              id="c-review"
+              type="date"
+              label="Review date"
+              value={v.review_date}
+              onChange={(e) => setV({ ...v, review_date: e.target.value })}
+              error={errors.review_date}
+            />
           </div>
           {isPlan && (
-            <div className="space-y-3 rounded-xl border border-line p-4">
-              <Input id="c-target" label="Measurable target (e.g. SEE ≥ 70%)" value={v.target_metric} onChange={(e) => setV({ ...v, target_metric: e.target.value })} />
-              <p className="text-sm font-semibold text-ink-900">Steps</p>
+            <div className="border-line space-y-3 rounded-xl border p-4">
+              <Input
+                id="c-target"
+                label="Measurable target (e.g. SEE ≥ 70%)"
+                value={v.target_metric}
+                onChange={(e) => setV({ ...v, target_metric: e.target.value })}
+              />
+              <p className="text-ink-900 text-sm font-semibold">Steps</p>
               <ul className="space-y-2">
                 {v.steps.map((s, i) => (
-                  <li key={s.id} className="flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-sm">
+                  <li
+                    key={s.id}
+                    className="bg-surface-muted flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  >
                     <span className="num text-ink-500">{i + 1}.</span>
-                    <span className="flex-1 text-ink-900">{s.label}</span>
-                    <button type="button" aria-label={`Remove step ${i + 1}`} className="grid size-8 place-items-center rounded-lg text-ink-500 hover:bg-surface-muted" onClick={() => setV({ ...v, steps: v.steps.filter((x) => x.id !== s.id) })}>
+                    <span className="text-ink-900 flex-1">{s.label}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove step ${i + 1}`}
+                      className="text-ink-500 hover:bg-surface-muted grid size-8 place-items-center rounded-lg"
+                      onClick={() => setV({ ...v, steps: v.steps.filter((x) => x.id !== s.id) })}
+                    >
                       <X className="size-4" />
                     </button>
                   </li>
@@ -574,7 +807,13 @@ function Composer({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && stepDraft.trim()) {
                       e.preventDefault()
-                      setV({ ...v, steps: [...v.steps, { id: crypto.randomUUID().slice(0, 8), label: stepDraft.trim(), done: false }] })
+                      setV({
+                        ...v,
+                        steps: [
+                          ...v.steps,
+                          { id: crypto.randomUUID().slice(0, 8), label: stepDraft.trim(), done: false },
+                        ],
+                      })
                       setStepDraft('')
                     }
                   }}
@@ -584,7 +823,13 @@ function Composer({
                   className="mt-1.5"
                   disabled={!stepDraft.trim() || v.steps.length >= 12}
                   onClick={() => {
-                    setV({ ...v, steps: [...v.steps, { id: crypto.randomUUID().slice(0, 8), label: stepDraft.trim(), done: false }] })
+                    setV({
+                      ...v,
+                      steps: [
+                        ...v.steps,
+                        { id: crypto.randomUUID().slice(0, 8), label: stepDraft.trim(), done: false },
+                      ],
+                    })
                     setStepDraft('')
                   }}
                 >
@@ -593,13 +838,19 @@ function Composer({
               </div>
             </div>
           )}
-          <div className="space-y-4 rounded-xl bg-surface-muted p-4">
+          <div className="bg-surface-muted space-y-4 rounded-xl p-4">
             <Switch
               id="c-private"
               label="Private to mentors"
               description="Sensitive notes are never visible to the student and never appear in reports."
               checked={v.visibility === 'PRIVATE_MENTOR'}
-              onCheckedChange={(c) => setV({ ...v, visibility: c ? 'PRIVATE_MENTOR' : 'SHARED', include_in_report: c ? false : v.include_in_report })}
+              onCheckedChange={(c) =>
+                setV({
+                  ...v,
+                  visibility: c ? 'PRIVATE_MENTOR' : 'SHARED',
+                  include_in_report: c ? false : v.include_in_report,
+                })
+              }
             />
             <Switch
               id="c-report"
@@ -629,7 +880,11 @@ function StatusSelect({ item, run }: { item: Recommendation; run: ReturnType<typ
         const next = e.target.value as Recommendation['status']
         setValue(next)
         const label = STATUS_OPTIONS.find((o) => o.value === next)?.label ?? next
-        const ok = await run(() => setRecommendationStatus(item.id, next), `Marked ${label.toLowerCase()}`, () => setRecommendationStatus(item.id, prev))
+        const ok = await run(
+          () => setRecommendationStatus(item.id, next),
+          `Marked ${label.toLowerCase()}`,
+          () => setRecommendationStatus(item.id, prev),
+        )
         if (!ok) setValue(prev)
       }}
       options={STATUS_OPTIONS}

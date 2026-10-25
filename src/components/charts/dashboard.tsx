@@ -619,7 +619,7 @@ export function MiniCalendar({
               onClick={() => onSelect?.(d)}
               aria-label={`${format(d, 'd MMMM')}${markedSet.has(key) ? ', has events' : ''}`}
               className={cn(
-                'num relative grid aspect-square place-items-center rounded-[12px] text-xs font-semibold transition-colors',
+                'num relative grid h-9 place-items-center rounded-[12px] text-xs font-semibold transition-colors',
                 !isSameMonth(d, month) && 'text-ink-400',
                 isSameMonth(d, month) && !sel && 'text-ink-700 hover:bg-surface-muted',
                 today && !sel && 'ring-primary-300 ring-1',

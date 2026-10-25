@@ -132,7 +132,10 @@ export function Select({ id, label, error, hint, options, placeholder = 'Selectâ
           )}
           {...props}
         >
-          <option value="">{placeholder}</option>
+          {/* Once a value is chosen the placeholder can't be re-selected (avoids blank required values). */}
+          <option value="" disabled={props.value != null && props.value !== ''} hidden={props.value != null && props.value !== ''}>
+            {placeholder}
+          </option>
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}

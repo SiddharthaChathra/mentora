@@ -11,7 +11,7 @@
 2. Academic records → Add semester. On a computer, type or paste marks into the grid (Tab moves right, Enter moves down); subjects for the semester are filled in from the catalogue. On a phone, enter one subject at a time.
 3. Submit the semester when it matches your official result. Your mentor verifies it. After that, ask for a correction if something is wrong.
 4. Feedback & plan: read notes, tick goal steps, add reflections. Resources and Sessions show what your mentor shared.
-5. Download your PDF report: it contains only verified records.
+5. Official PDF reports (verified records only) are issued by your mentor or HOD — ask them for a copy.
 
 ## Mentors
 - Overview: average SGPA, who needs attention (with reasons), follow-ups, sessions, subject performance (select a bar to see who took it).

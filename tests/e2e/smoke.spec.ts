@@ -92,3 +92,40 @@ test('HOD semester switcher filters department pages', async ({ page }) => {
   await page.getByRole('button', { name: 'Show all semesters' }).click()
   await expect(page.getByText('Show all semesters')).toHaveCount(0)
 })
+
+test('HOD can open the per-student move menu on the assignments board', async ({ page }) => {
+  await login(page, process.env.SEED_HOD_EMAIL!, process.env.SEED_HOD_PASSWORD!)
+  await page.waitForURL('**/hod')
+  await skipTour(page)
+  await page.goto('/hod/assignments')
+  await page.getByRole('button', { name: /^Move / }).first().click()
+  await expect(page.getByRole('menuitem', { name: 'Open profile' })).toBeVisible()
+})
+
+test('invite email link signs the new user in (local Mailpit)', async ({ page, request }) => {
+  const mailpit = 'http://127.0.0.1:54324'
+  test.skip(!(await request.get(`${mailpit}/api/v1/info`).then((r) => r.ok()).catch(() => false)), 'Mailpit not available')
+  await login(page, process.env.SEED_HOD_EMAIL!, process.env.SEED_HOD_PASSWORD!)
+  await page.waitForURL('**/hod')
+  await skipTour(page)
+  const email = `e2e.invite.${Date.now()}@example.com`
+  await page.goto('/hod/users')
+  await page.getByRole('button', { name: /invite user/i }).click()
+  const dlg = page.getByRole('dialog')
+  await dlg.locator('#inv-email').fill(email)
+  await dlg.locator('#inv-name').fill('E2E Invited Mentor')
+  await dlg.locator('#inv-role').selectOption('MENTOR')
+  await dlg.getByRole('button', { name: 'Send invite' }).click()
+  await expect(page.getByText(`Invitation sent to ${email}`)).toBeVisible()
+  let link = ''
+  for (let i = 0; i < 10 && !link; i++) {
+    const found = await (await request.get(`${mailpit}/api/v1/search?query=to:${encodeURIComponent(email)}`)).json()
+    if (found.messages?.length) {
+      const msg = await (await request.get(`${mailpit}/api/v1/message/${found.messages[0].ID}`)).json()
+      link = ((msg.HTML || msg.Text) as string).match(/https?:\/\/[^"'\s<>]+verify[^"'\s<>]+/)![0].replace(/&amp;/g, '&')
+    } else await page.waitForTimeout(1000)
+  }
+  await page.context().clearCookies()
+  await page.goto(link)
+  await page.waitForURL('**/accept-invite', { timeout: 60_000 })
+})

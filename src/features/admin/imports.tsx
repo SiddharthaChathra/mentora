@@ -29,6 +29,7 @@ export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
   const [preview, setPreview] = React.useState<PreviewResult | null>(null)
   const [busy, setBusy] = React.useState(false)
   const [dup, setDup] = React.useState<'skip' | 'update'>('skip')
+  const importCount = preview ? preview.valid - (dup === 'skip' ? preview.rows.filter((r) => !r.errors.length && r.duplicate).length : 0) : 0
   const [invites, setInvites] = React.useState(true)
   const [only, setOnly] = React.useState<'all' | 'problems'>('all')
   const [done, setDone] = React.useState<{ summary: Record<string, unknown>; jobId: string; failures: number } | null>(null)
@@ -143,7 +144,7 @@ export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
           <Card className="overflow-hidden">
             <CardHeader
               title="Preview"
-              description={preview.total > preview.rows.length ? `Showing the first ${preview.rows.length} of ${preview.total} rows` : `${preview.total} rows`}
+              description={preview.total > preview.rows.length ? `Showing the first ${preview.rows.length} of ${preview.total} rows` : `${preview.total} ${preview.total === 1 ? 'row' : 'rows'}`}
               action={<Segmented size="sm" label="Row filter" value={only} onChange={setOnly} options={[{ value: 'all', label: 'All rows' }, { value: 'problems', label: 'Problems' }]} />}
             />
             <CardBody>
@@ -206,7 +207,7 @@ export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
                   </div>
                 )}
                 {(preview.kind === 'students' || preview.kind === 'mentors') && <Checkbox id="send-invites" label="Send invitation emails to new users" description="Otherwise accounts are created and you can send invites later from Users & roles." checked={invites} onCheckedChange={(v) => setInvites(v === true)} />}
-                {preview.errors > 0 && <p className="text-sm text-danger-700">{preview.errors} row(s) with errors will be skipped. Fix them and import again, or download the error report afterwards.</p>}
+                {preview.errors > 0 && <p className="text-sm text-danger-700">{preview.errors} {preview.errors === 1 ? 'row has errors and' : 'rows with errors'} will be skipped. Fix them and import again, or download the error report afterwards.</p>}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -219,7 +220,7 @@ export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
                   <ArrowLeft /> Start over
                 </Button>
                 <Button size="lg" onClick={commit} loading={busy} disabled={preview.valid === 0}>
-                  <CheckCircle2 /> Import {preview.valid - (dup === 'skip' ? preview.rows.filter((r) => !r.errors.length && r.duplicate).length : 0)} rows
+                  <CheckCircle2 /> Import {importCount} {importCount === 1 ? 'row' : 'rows'}
                 </Button>
               </div>
             </CardBody>

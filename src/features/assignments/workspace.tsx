@@ -138,7 +138,7 @@ function Board({
   const columns: { id: string; title: string; mentor?: BoardMentor }[] = [{ id: 'unassigned', title: 'Unassigned' }, ...mentors.map((m) => ({ id: m.id, title: m.name, mentor: m }))]
   return (
     <DndContext sensors={sensors} onDragStart={(e) => setDragging(String(e.active.id))} onDragEnd={onEnd} onDragCancel={() => setDragging(null)}>
-      <div className="scrollbar-none -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="scrollbar-none relative -mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {columns.map((c) => (
           <Column key={c.id} id={c.id} title={c.title} mentor={c.mentor} rows={rows.filter((r) => (c.id === 'unassigned' ? !r.mentorId : r.mentorId === c.id))} selected={selected} toggle={toggle} mentors={mentors} request={request} />
         ))}

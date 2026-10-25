@@ -14,6 +14,15 @@ export async function GET(request: NextRequest) {
   const fallback = type === 'recovery' ? '/reset-password' : type === 'invite' ? '/accept-invite' : '/dashboard'
   const next = SAFE_NEXT.test(rawNext) ? rawNext : fallback
 
+  // Default Supabase emails (implicit flow) carry the session in the URL #fragment, which never reaches
+  // the server. Browsers keep the fragment across redirects, so hand off to the client-side callback.
+  if (!tokenHash && !code) {
+    const cb = request.nextUrl.clone()
+    cb.pathname = '/auth/callback'
+    cb.search = `?next=${encodeURIComponent(next)}`
+    return NextResponse.redirect(cb)
+  }
+
   const db = await createClient()
   let ok = false
   if (tokenHash && type) ok = !(await db.auth.verifyOtp({ type, token_hash: tokenHash })).error

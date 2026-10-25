@@ -21,7 +21,9 @@ export async function rateLimit(key: string, limit: number, windowMs: number) {
     return
   }
   b.count++
-  if (b.count > limit) {
+  // Local dev shares one "local" IP across every browser and test run; keep production strict.
+  const max = process.env.NODE_ENV === 'production' ? limit : limit * 50
+  if (b.count > max) {
     const mins = Math.ceil((b.resetAt - now) / 60000)
     throw new AppError('RATE_LIMITED', `Too many attempts. Please wait ${mins} minute${mins === 1 ? '' : 's'} and try again.`)
   }

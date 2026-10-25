@@ -17,6 +17,8 @@ export async function signIn(input: unknown) {
     const db = await createClient()
     const { data, error } = await db.auth.signInWithPassword({ email, password })
     if (error || !data.user) {
+      // Suspended accounts are banned in Auth; send them to the explanation page instead of a generic error.
+      if (error?.code === 'user_banned') return '/suspended'
       if (error?.status === 429) throw new AppError('RATE_LIMITED', 'Too many attempts. Please wait a few minutes and try again.')
       throw new AppError('UNAUTHENTICATED', GENERIC_LOGIN)
     }

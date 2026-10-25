@@ -181,6 +181,10 @@
 }
 
 @layer base {
+  /* Contain absolutely positioned descendants (e.g. sr-only labels) inside horizontal scrollers so they never widen the page. */
+  :where(.overflow-x-auto) { position: relative; }
+  /* Grid children may shrink below their content (long words, wide charts) instead of widening the page. */
+  :where(.grid) > :where(*) { min-width: 0; }
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
