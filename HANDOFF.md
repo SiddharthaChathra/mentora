@@ -4,18 +4,19 @@ From model: Claude Opus 5.5 · Reason: long context
 Branch / last commit: feat/v2-sky-dashboard · 7c38333 V2.R7: reference-driven polish + rubric score
 Design version: v2 Sky Dashboard (DESIGN.md)
 ## Where we are
-Phase V2 – Sky Dashboard redesign: slices R1–R7 done (phase complete). Next phase: deploy (human MANUAL STEPS M2–M6).
+Phase D – Deploy: done (live). Optional next: email delivery setup (human) and any user-requested features.
 ## Current slice state
-- Done: R7 reference comparison (design/references present), polish, rubric ≥ 9 at 1440/834/390.
-- Not done yet: cloud deploy M2–M6 in DEPLOY.md (human); PR from `feat/v2-sky-dashboard` only when the user asks.
+- Done: cloud Supabase (001–010), Vercel production at https://mentora-zeta-six.vercel.app, self sign-up, live smoke test.
+- Not done: email delivery (human: disable "Confirm email" or add SMTP in Supabase Auth).
 - Uncommitted changes: none.
 ## Gates
-typecheck pass · lint pass · unit 55/55 · rls 11/11 · e2e 5/5 · build pass (all re-run 2026-10-25)
+typecheck pass · lint pass · unit 55/55 · rls 13/13 · e2e 6/6 · live 1/1 · build pass (Vercel)
 ## Next 3 actions (exact)
-1. If the user asks for a PR: push `feat/v2-sky-dashboard` and open it (body ends with the Claude Code line) – no code changes.
-2. Assist the user through DEPLOY.md M2–M6; after deploy run `E2E_BASE_URL=<prod> pnpm test:e2e` – acceptance: FEATURES "Cloud deploy".
-3. Only on request: further UI polish — screenshot touched routes at 1440 + 390, keep rubric ≥ 9, never edit applied migrations.
+1. New cloud migrations: add file `supabase/migrations/0011_*.sql`, apply locally (`npx supabase migration up --local`) and to cloud project `ikeauzqhzpqtsjfbrolr` (Supabase MCP `apply_migration`; avoid `drop` statements — they need human confirmation).
+2. Deploy = `git push origin HEAD:main` (Vercel auto-builds); check with `npx vercel ls mentora --scope sid-941f`; then `LIVE=1 E2E_BASE_URL=https://mentora-zeta-six.vercel.app pnpm exec playwright test live`.
+3. Env changes: `npx vercel env add <KEY> --environment production --type config|secret --value … --yes --force --scope sid-941f`, then redeploy.
 ## Watch out
+- Never print or commit `.env.production.local` (prod secrets). Vercel MCP is read/write-forbidden for this team — use the Vercel CLI (logged in).
 - Local dev needs Docker Desktop running; otherwise Supabase is down and logins fail (AuthRetryableFetchError).
 - RLS helpers in schema `app` must stay SECURITY DEFINER; never add FORCE RLS (breaks them).
 - Migrations 001–008 are applied locally; add new ones as 009+, never edit applied files. Run `pnpm db:types` after schema changes.
