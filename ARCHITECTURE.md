@@ -12,7 +12,7 @@ Next.js 16 App Router (React 19, TypeScript 6, Tailwind v4) on Supabase (Postgre
 ## Route map
 | Area | Routes |
 |---|---|
-| Public | `/`, `/login`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/auth/confirm` |
+| Public | `/`, `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/accept-invite`, `/auth/confirm` |
 | Onboarding | `/setup` |
 | Mentee | `/mentee`, `/academics[/n]`, `/analytics`, `/mentoring`, `/resources`, `/sessions`, `/journey`, `/profile` |
 | Mentor | `/mentor`, `/mentees[/id]`, `/verifications`, `/recommendations`, `/resources`, `/sessions`, `/analytics`, `/reports` |
@@ -27,7 +27,7 @@ Next.js 16 App Router (React 19, TypeScript 6, Tailwind v4) on Supabase (Postgre
 - `src/server/report` — @react-pdf document + pdf-lib page numbering (Plus Jakarta Sans embedded).
 - `src/lib` — pure engines (`grading`, `insights`, `risk`), validators (zod 4), hooks, glossary.
 - `src/features` — feature UI; `src/components` — design system (see DESIGN.md).
-- `supabase/migrations` — 001 schema · 002 RLS · 003 triggers · 004 RPC · 005 storage · 006 imports · 007 sessions · 008 notification snooze.
+- `supabase/migrations` — 001 schema · 002 RLS · 003 triggers · 004 RPC · 005 storage · 006 imports · 007 sessions · 008 notification snooze · 009 template-function hardening · 010 student self sign-up trigger.
 - `tests/unit` (vitest), `tests/rls` (live local Supabase), `tests/e2e` (Playwright).
 
 ## Data rules

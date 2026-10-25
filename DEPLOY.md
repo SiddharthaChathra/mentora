@@ -14,7 +14,8 @@ Target: Supabase (cloud project) + Vercel. Secrets go only into Vercel/Supabase 
 
 ### MANUAL STEP M3 — Auth settings and email templates
 - Auth → URL configuration: Site URL `https://<your-domain>`; redirect URLs `https://<your-domain>/auth/confirm`.
-- Auth → Providers → Email: keep email login on; turn **off** "Allow new users to sign up".
+- Auth → Providers → Email: keep email login **and** "Allow new users to sign up" on (students self-register; the DB trigger makes them MENTEE only).
+- Free email delivery: Supabase's built-in mailer only reaches project team members. Either turn off "Confirm email" (students can sign in immediately) or add a free SMTP (Gmail app password, or Resend with a verified domain) under Auth → SMTP so confirmation, invite and reset emails reach everyone.
 - Auth → Email templates (Invite, Reset password): link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite` (or `type=recovery`).
 - Optional: custom SMTP (Resend) under Auth → SMTP.
 

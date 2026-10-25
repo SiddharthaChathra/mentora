@@ -40,6 +40,10 @@ export const setPasswordSchema = z
   .object({ password: passwordSchema, confirm: z.string() })
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords do not match' })
 
+export const signupSchema = z
+  .object({ full_name: nameSchema, email: z.email('Enter a valid email address').trim().toLowerCase(), password: passwordSchema, confirm: z.string() })
+  .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'Passwords do not match' })
+
 export const forgotSchema = z.object({ email: z.email('Enter a valid email address').trim().toLowerCase() })
 
 // ───────────────────────────── Profiles ─────────────────────────────

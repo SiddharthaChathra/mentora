@@ -124,3 +124,22 @@ describe('hod', () => {
     expect(count ?? 0).toBeGreaterThanOrEqual(60)
   })
 })
+
+describe('self sign-up', () => {
+  it('always creates an ACTIVE MENTEE, whatever the client sends', async () => {
+    const c = fresh()
+    const email = `rls.signup.${Date.now()}@example.com`
+    const { data, error } = await c.auth.signUp({ email, password: 'Signup-Test-123', options: { data: { signup: 'self', full_name: 'Test Student', role: 'HOD' } } })
+    expect(error).toBeNull()
+    const { data: u } = await hod.db.from('users').select('role, status').eq('id', data.user!.id).single()
+    expect(u).toEqual({ role: 'MENTEE', status: 'ACTIVE' })
+  })
+
+  it('creates no app account without the sign-up marker', async () => {
+    const c = fresh()
+    const { data } = await c.auth.signUp({ email: `rls.raw.${Date.now()}@example.com`, password: 'Signup-Test-123' })
+    const { data: u } = await hod.db.from('users').select('id').eq('id', data.user!.id).maybeSingle()
+    expect(u).toBeNull()
+  })
+})
+

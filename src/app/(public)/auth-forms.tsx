@@ -8,8 +8,8 @@ import { z } from 'zod'
 import { ArrowRight, CheckCircle2, Eye, EyeOff, MailCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/field'
-import { forgotSchema, loginSchema, setPasswordSchema } from '@/lib/validators'
-import { requestPasswordReset, setNewPassword, signIn } from '@/server/actions/auth'
+import { forgotSchema, loginSchema, setPasswordSchema, signupSchema } from '@/lib/validators'
+import { requestPasswordReset, setNewPassword, signIn, signUp } from '@/server/actions/auth'
 import { cn } from '@/lib/utils'
 
 function FormAlert({ children, tone = 'danger' }: { children: React.ReactNode; tone?: 'danger' | 'success' | 'info' }) {
@@ -80,6 +80,12 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string }) 
       <Button type="submit" size="lg" className="w-full" loading={form.formState.isSubmitting}>
         Sign in <ArrowRight />
       </Button>
+      <p className="text-center text-sm text-ink-500">
+        New student?{' '}
+        <Link href="/signup" className="font-medium text-primary-600 hover:underline">
+          Create an account
+        </Link>
+      </p>
     </form>
   )
 }
@@ -129,6 +135,68 @@ const RULES = [
   { test: (v: string) => /[0-9]/.test(v), label: 'At least one number' },
 ]
 
+function PasswordRules({ value }: { value: string }) {
+  return (
+    <ul className="grid gap-1.5 text-xs" aria-label="Password requirements">
+      {RULES.map((r) => {
+        const ok = r.test(value)
+        return (
+          <li key={r.label} className={cn('flex items-center gap-1.5', ok ? 'text-success-700' : 'text-ink-500')}>
+            <CheckCircle2 className={cn('size-3.5', ok ? 'opacity-100' : 'opacity-40')} /> {r.label}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+export function SignupForm() {
+  const [error, setError] = React.useState<string | null>(null)
+  const [checkEmail, setCheckEmail] = React.useState(false)
+  const form = useForm<z.input<typeof signupSchema>>({ resolver: zodResolver(signupSchema), defaultValues: { full_name: '', email: '', password: '', confirm: '' } })
+  const pw = useWatch({ control: form.control, name: 'password' }) ?? ''
+  const onSubmit = form.handleSubmit(async (values) => {
+    setError(null)
+    const res = await signUp(values)
+    if (!res) return
+    if (!res.ok) setError(res.error.message)
+    else if (res.data === 'check-email') setCheckEmail(true)
+  })
+  if (checkEmail)
+    return (
+      <div className="text-center">
+        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-success-100 text-success-700">
+          <MailCheck className="size-7" />
+        </span>
+        <p className="mt-4 font-medium text-ink-900">Confirm your email</p>
+        <p className="mt-1 text-sm text-ink-500">We sent a confirmation link to {form.getValues('email')}. Open it to finish creating your account.</p>
+        <Link href="/login" className="mt-6 inline-flex text-sm font-medium text-primary-600 hover:underline">
+          Back to sign in
+        </Link>
+      </div>
+    )
+  return (
+    <form onSubmit={onSubmit} noValidate className="space-y-4">
+      {error && <FormAlert>{error}</FormAlert>}
+      <Input id="full_name" label="Full name" autoComplete="name" required {...form.register('full_name')} error={form.formState.errors.full_name?.message} />
+      <Input id="email" label="College email" type="email" autoComplete="email" inputMode="email" required {...form.register('email')} error={form.formState.errors.email?.message} />
+      <PasswordInput id="password" label="Password" autoComplete="new-password" required {...form.register('password')} error={form.formState.errors.password?.message} />
+      <PasswordRules value={pw} />
+      <PasswordInput id="confirm" label="Confirm password" autoComplete="new-password" required {...form.register('confirm')} error={form.formState.errors.confirm?.message} />
+      <Button type="submit" size="lg" className="w-full" loading={form.formState.isSubmitting}>
+        Create student account <ArrowRight />
+      </Button>
+      <p className="text-center text-sm text-ink-500">
+        Already have an account?{' '}
+        <Link href="/login" className="font-medium text-primary-600 hover:underline">
+          Sign in
+        </Link>
+      </p>
+      <p className="text-center text-xs text-ink-500">Mentors and HODs join by invitation from the department.</p>
+    </form>
+  )
+}
+
 export function SetPasswordForm({ mode }: { mode: 'reset' | 'invite' }) {
   const [error, setError] = React.useState<string | null>(null)
   const form = useForm<z.input<typeof setPasswordSchema>>({ resolver: zodResolver(setPasswordSchema), defaultValues: { password: '', confirm: '' } })
@@ -142,16 +210,7 @@ export function SetPasswordForm({ mode }: { mode: 'reset' | 'invite' }) {
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       {error && <FormAlert>{error}</FormAlert>}
       <PasswordInput id="password" label="New password" autoComplete="new-password" required {...form.register('password')} error={form.formState.errors.password?.message} />
-      <ul className="grid gap-1.5 text-xs" aria-label="Password requirements">
-        {RULES.map((r) => {
-          const ok = r.test(pw)
-          return (
-            <li key={r.label} className={cn('flex items-center gap-1.5', ok ? 'text-success-700' : 'text-ink-500')}>
-              <CheckCircle2 className={cn('size-3.5', ok ? 'opacity-100' : 'opacity-40')} /> {r.label}
-            </li>
-          )
-        })}
-      </ul>
+      <PasswordRules value={pw} />
       <PasswordInput id="confirm" label="Confirm password" autoComplete="new-password" required {...form.register('confirm')} error={form.formState.errors.confirm?.message} />
       <Button type="submit" size="lg" className="w-full" loading={form.formState.isSubmitting}>
         {mode === 'invite' ? 'Create password & continue' : 'Update password'} <ArrowRight />

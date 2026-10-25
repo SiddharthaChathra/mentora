@@ -3,7 +3,8 @@
 `[x]` = built and verified (tests, gates or browser check) · `[ ]` = not done / needs a manual step.
 
 ## Auth & roles
-- [x] Email/password login, forgot/reset, invite acceptance (`/auth/confirm`); public sign-up disabled
+- [x] Email/password login, forgot/reset, invite acceptance (`/auth/confirm`)
+- [x] Student self sign-up (`/signup`): DB trigger always creates an ACTIVE MENTEE; mentors/HODs only by invite; HOD can disable via `app_settings.self_signup`
 - [x] Roles MENTEE / MENTOR / HOD from the `users` table only; `proxy.ts` + `pageGuard` + RLS
 - [x] Sessions list and revoke, password change, sign out everywhere
 - [x] Suspended / 403 / offline / not-found pages

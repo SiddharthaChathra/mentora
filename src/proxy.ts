@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 const PROTECTED = ['/mentee', '/mentor', '/hod', '/setup', '/account', '/notifications', '/dashboard', '/accept-invite']
-const AUTH_PAGES = ['/login', '/forgot-password']
+const AUTH_PAGES = ['/login', '/forgot-password', '/signup']
 
 /**
  * Refreshes the Supabase session cookie and does a coarse "signed in?" check.

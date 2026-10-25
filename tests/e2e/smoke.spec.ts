@@ -65,3 +65,14 @@ test('mobile shows bottom navigation', async ({ page }) => {
   await page.waitForURL('**/mentee')
   await expect(page.getByRole('navigation', { name: /primary|main|bottom/i }).last()).toBeVisible()
 })
+
+test('student can sign up and lands on setup', async ({ page }) => {
+  await page.goto('/signup')
+  await page.fill('#full_name', 'E2E Student')
+  await page.fill('#email', `e2e.signup.${Date.now()}@example.com`)
+  await page.fill('#password', 'Signup-Test-123')
+  await page.fill('#confirm', 'Signup-Test-123')
+  await page.getByRole('button', { name: /create student account/i }).click()
+  await page.waitForURL('**/setup', { timeout: 60_000 })
+})
+

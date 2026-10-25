@@ -5,7 +5,7 @@ import { createClient } from '@/server/supabase'
 import { serverEnv } from '@/server/env'
 import { AppError, handle } from '@/server/handle'
 import { rateLimit } from '@/server/rate-limit'
-import { forgotSchema, loginSchema, setPasswordSchema } from '@/lib/validators'
+import { forgotSchema, loginSchema, setPasswordSchema, signupSchema } from '@/lib/validators'
 import { ROLE_HOME } from '@/lib/roles'
 
 const GENERIC_LOGIN = 'That email and password combination didn’t work. Check both and try again.'
@@ -33,6 +33,33 @@ export async function signIn(input: unknown) {
     return next && next.startsWith(home) && !next.startsWith('//') ? next : home
   })
   if (res.ok) redirect(res.data)
+  return res
+}
+
+/**
+ * Self sign-up for students. The database trigger (migration 010) creates the MENTEE account;
+ * the role is never taken from this request. Returns 'check-email' when the project requires email confirmation.
+ */
+export async function signUp(input: unknown) {
+  const res = await handle(async () => {
+    const { full_name, email, password } = signupSchema.parse(input)
+    await rateLimit('signup', 5, 15 * 60_000)
+    const db = await createClient()
+    const { data, error } = await db.auth.signUp({
+      email,
+      password,
+      options: { data: { signup: 'self', full_name }, emailRedirectTo: `${serverEnv.siteUrl}/auth/confirm?type=signup&next=/setup` },
+    })
+    if (error) {
+      if (error.status === 429) throw new AppError('RATE_LIMITED', 'Too many attempts. Please wait a few minutes and try again.')
+      if (/turned off/i.test(error.message)) throw new AppError('FORBIDDEN', 'Sign-up is turned off. Ask your HOD for an invitation.')
+      throw new AppError('BAD_REQUEST', 'We couldn’t create your account. If you already have one, sign in or reset your password.')
+    }
+    // Existing emails come back without identities; answer the same way so accounts can't be probed.
+    if (!data.session) return 'check-email' as const
+    return '/setup'
+  })
+  if (res.ok && res.data !== 'check-email') redirect(res.data)
   return res
 }
 
