@@ -37,7 +37,7 @@ const ROLES: { eyebrow: string; title: string; body: string; points: string[]; i
 
 const SECURITY = [
   { icon: LockKeyhole, title: 'Row-level security', body: 'Access rules live in the database. Mentors only ever see students actively assigned to them.' },
-  { icon: KeyRound, title: 'Invite-only accounts', body: 'No public sign-up. Roles are assigned by the HOD through an audited admin flow.' },
+  { icon: KeyRound, title: 'Roles you can trust', body: 'Students sign up as students only. Mentor and HOD roles are granted by the HOD through an audited admin flow.' },
   { icon: FileLock2, title: 'Private files', body: 'Uploads stay private and are served through short-lived links after a permission check.' },
   { icon: ShieldCheck, title: 'Full audit trail', body: 'Changes to marks, CGPA, assignments and mentoring records record who, what and when.' },
 ]
@@ -84,7 +84,7 @@ export default function LandingPage() {
                   </a>
                 </div>
                 <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/90">
-                  {['Invite-only access', 'Verified academic records', 'Built for phones too'].map((t) => (
+                  {['Free student sign-up', 'Verified academic records', 'Built for phones too'].map((t) => (
                     <li key={t} className="inline-flex items-center gap-1.5">
                       <CheckCircle2 className="size-4" /> {t}
                     </li>
