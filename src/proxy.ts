@@ -40,6 +40,18 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
   }
+  // A student profile URL outside the viewer's scope is a real 404 (RLS decides visibility) — the page never renders,
+  // so the response doesn't even confirm that the student exists.
+  const profile = data.user ? STUDENT_PROFILE.exec(path) : null
+  if (profile) {
+    const { data: visible } = await supabase.from('users').select('id').eq('id', profile[1]!).eq('role', 'MENTEE').maybeSingle()
+    if (!visible) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/_out-of-scope'
+      url.search = ''
+      return NextResponse.rewrite(url, { status: 404 })
+    }
+  }
   if (data.user && AUTH_PAGES.includes(path)) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
@@ -48,6 +60,8 @@ export async function proxy(request: NextRequest) {
   }
   return response
 }
+
+const STUDENT_PROFILE = /^\/(?:hod\/students|mentor\/mentees|principal\/students)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i
 
 const PRINCIPAL_TWINS = ['students', 'mentors', 'analytics', 'interventions', 'users', 'imports', 'exports', 'settings', 'audit']
 

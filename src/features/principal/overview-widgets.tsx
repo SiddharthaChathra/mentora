@@ -44,9 +44,9 @@ export function BranchComparison({ rows }: { rows: BranchHealthRow[] }) {
       value={metric}
       onChange={setMetric}
       options={[
-        { value: 'sgpa', label: 'Avg SGPA' },
+        { value: 'sgpa', label: 'SGPA' },
         { value: 'coverage', label: 'Coverage' },
-        { value: 'missing', label: 'Missing records' },
+        { value: 'missing', label: 'Missing' },
       ]}
     />
   )

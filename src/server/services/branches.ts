@@ -1,8 +1,10 @@
 import 'server-only'
 import { cache } from 'react'
 import { cookies } from 'next/headers'
-import type { DB } from '@/server/supabase'
+import { unstable_cache } from 'next/cache'
+import { createTokenClient, type DB } from '@/server/supabase'
 import { loadBranchData } from './department'
+import { slim, type SlimRoster } from './roster'
 
 export type Branch = {
   id: string
@@ -63,8 +65,40 @@ export async function loadCollege(db: DB, branches: Branch[], scope: number | nu
 }
 export type BranchData = Awaited<ReturnType<typeof loadCollege>>[number]
 
+/** A branch roster without the per-semester results: enough for health, lists, flags and workload. */
+export type BranchDigest = { branch: Branch; roster: (SlimRoster & { years: string[] })[]; mentors: BranchData['mentors'] }
+
+export const ROSTER_TAG = 'college-roster'
+
+const digestOf = (d: BranchData): BranchDigest => ({
+  branch: d.branch,
+  mentors: d.mentors,
+  roster: d.roster.map((r) => ({ ...slim(r), years: [...new Set(r.semesters.map((s) => s.academicYear))] })),
+})
+
+/**
+ * College-wide Principal views (overview, students, mentors, interventions) at college size: per-branch digests are
+ * cached for 60 s per signed-in session and dropped on writes (revalidateTag(ROSTER_TAG)). The cached loader runs
+ * with the caller's own access token, so RLS decides exactly as it does live; the token is part of the cache key.
+ */
+export async function loadCollegeDigest(db: DB, branches: Branch[], scope: number | null): Promise<BranchDigest[]> {
+  const {
+    data: { session },
+  } = await db.auth.getSession()
+  const token = session?.access_token
+  if (!token) return (await loadCollege(db, branches, scope)).map(digestOf)
+  return Promise.all(
+    branches.map((b) =>
+      unstable_cache(async () => digestOf({ branch: b, ...(await loadBranchData(createTokenClient(token), b.id, scope)) }), ['branch-digest', b.id, String(scope), token.slice(-32)], {
+        revalidate: 60,
+        tags: [ROSTER_TAG],
+      })(),
+    ),
+  )
+}
+
 /** Branch health numbers derived from a loaded roster (no student ranking — only branch-level aggregates). */
-export function branchHealth(d: BranchData) {
+export function branchHealth(d: { roster: Pick<SlimRoster, 'mentorId' | 'risk' | 'latestSgpa' | 'sgpaSeries' | 'onboardingCompletedAt' | 'hasRecords' | 'flags'>[]; mentors: BranchData['mentors'] }) {
   const students = d.roster.length
   const assigned = d.roster.filter((r) => r.mentorId).length
   const flagged = d.roster.filter((r) => r.risk !== 'none')

@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { ROSTER_TAG } from '@/server/services/branches'
 import { cookies } from 'next/headers'
 import { createClient } from '@/server/supabase'
 import { actorOrThrow, ROLE_HOME, type Role } from '@/server/authz'
@@ -35,6 +36,7 @@ const refresh = () => {
   revalidatePath('/mentee', 'layout')
   revalidatePath('/mentor', 'layout')
   revalidatePath('/hod', 'layout')
+  updateTag(ROSTER_TAG)
 }
 
 /** Autosave of in-progress wizard values (debounced on the client). Nothing here is validated or published. */

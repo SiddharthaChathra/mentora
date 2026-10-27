@@ -44,7 +44,7 @@ export type MentorSummary = {
 }
 
 export async function getStudentProfile(db: DB, studentId: string): Promise<StudentProfile | null> {
-  const { data: u } = await db.from('users').select('id, email, status, created_at, onboarding_completed_at, department_id, departments(name)').eq('id', studentId).maybeSingle()
+  const { data: u } = await db.from('users').select('id, email, status, created_at, onboarding_completed_at, department_id, departments!users_department_id_fkey(name)').eq('id', studentId).maybeSingle()
   if (!u) return null
   const { data: p } = await db.from('student_profiles').select('*, sections(name)').eq('user_id', studentId).maybeSingle()
   return {

@@ -120,6 +120,12 @@ const SEMESTER_SELECT = `id, student_id, semester_no, academic_year, status, man
   student_subject_results(id, subject_id, attempt, credits, mse_marks, mse_max, see_marks, see_max, ia, grade, grade_points, result, credits_earned,
     subjects(code, name, credits))`
 
+/** Roster/dashboard variant: no IA breakdown (display-only), about half the payload at college size. */
+const SEMESTER_SELECT_SLIM = `id, student_id, semester_no, academic_year, status, manual_sgpa, manual_cgpa, submitted_at, verified_at, finalized_at, updated_at,
+  semester_summaries(sgpa, computed, credits_earned, credits_registered),
+  student_subject_results(id, subject_id, attempt, credits, mse_marks, mse_max, see_marks, see_max, grade, grade_points, result, credits_earned,
+    subjects(code, name, credits))`
+
 type RawSemester = {
   id: string
   student_id: string
@@ -211,7 +217,7 @@ function buildSemester(raw: RawSemester, scheme: GradingScheme | null): Semester
     ? {
         sgpa: n(raw.semester_summaries.sgpa),
         computed: raw.semester_summaries.computed,
-        note: raw.semester_summaries.computation_note,
+        note: raw.semester_summaries.computation_note ?? null,
         creditsEarned: Number(raw.semester_summaries.credits_earned),
         creditsRegistered: Number(raw.semester_summaries.credits_registered),
       }
@@ -228,9 +234,9 @@ function buildSemester(raw: RawSemester, scheme: GradingScheme | null): Semester
     manualCgpa: n(raw.manual_cgpa),
     submittedAt: raw.submitted_at,
     verifiedAt: raw.verified_at,
-    verifiedBy: raw.verified_by,
+    verifiedBy: raw.verified_by ?? null,
     finalizedAt: raw.finalized_at,
-    returnNote: raw.return_note,
+    returnNote: raw.return_note ?? null,
     updatedAt: raw.updated_at,
     results,
     stored,
@@ -268,13 +274,15 @@ export async function loadStudentAcademics(
 }
 
 /** Bulk load for many students (mentor / HOD dashboards). One query per table. */
-export async function loadManyAcademics(db: DB, studentIds: string[], departmentId: string | null) {
+export async function loadManyAcademics(db: DB, studentIds: string[], departmentId: string | null, opts: { slim?: boolean } = {}) {
   const out = new Map<string, SemesterBundle[]>()
   if (studentIds.length === 0) return { scheme: null as GradingScheme | null, byStudent: out }
   const { scheme } = await loadScheme(db, departmentId)
-  for (let i = 0; i < studentIds.length; i += 150) {
-    const chunk = studentIds.slice(i, i + 150)
-    const rows = (check(await db.from('academic_semesters').select(SEMESTER_SELECT).in('student_id', chunk).order('semester_no')) ?? []) as unknown as RawSemester[]
+  const chunks: string[][] = []
+  for (let i = 0; i < studentIds.length; i += 150) chunks.push(studentIds.slice(i, i + 150))
+  const pages = await Promise.all(chunks.map((chunk) => db.from('academic_semesters').select(opts.slim ? SEMESTER_SELECT_SLIM : SEMESTER_SELECT).in('student_id', chunk).order('semester_no')))
+  for (const page of pages) {
+    const rows = (check(page) ?? []) as unknown as RawSemester[]
     for (const r of rows) {
       const list = out.get(r.student_id) ?? []
       list.push(buildSemester(r, scheme))

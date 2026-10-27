@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { ROSTER_TAG } from '@/server/services/branches'
 import { createClient } from '@/server/supabase'
 import { actorOrThrow, assertCanViewStudent } from '@/server/authz'
 import { AppError, badRequest, check, forbidden, handle, must } from '@/server/handle'
@@ -13,6 +14,7 @@ const revalidateAcademics = () => {
   revalidatePath('/mentor', 'layout')
   revalidatePath('/hod', 'layout')
   revalidatePath('/setup')
+  updateTag(ROSTER_TAG)
 }
 
 async function semesterOwner(semesterId: string) {

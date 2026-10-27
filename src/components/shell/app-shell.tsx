@@ -381,7 +381,9 @@ function BranchSwitcher({ branches, value }: { branches: BranchOption[]; value: 
     router.push(`${pathname}${next.size ? `?${next}` : ''}`)
   }
   return (
-    <label data-tour="branch" className="relative inline-flex">
+    <>
+      <BranchSheet branches={branches} value={valid} onPick={set} />
+      <label data-tour="branch" className="relative hidden sm:inline-flex">
       <span className="sr-only">Branch</span>
       <select value={valid} onChange={(e) => set(e.target.value)} className="h-10 max-w-[8.5rem] cursor-pointer appearance-none truncate rounded-full border border-primary-200 bg-primary-50 pr-8 pl-3 text-xs font-semibold text-primary-700 outline-none hover:border-primary-300 focus-visible:border-primary-600 sm:h-11 sm:max-w-none sm:pr-9 sm:pl-4 sm:text-sm">
         <option value="">All branches</option>
@@ -392,7 +394,41 @@ function BranchSwitcher({ branches, value }: { branches: BranchOption[]; value: 
         ))}
       </select>
       <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-primary-600 sm:right-3.5" />
-    </label>
+      </label>
+    </>
+  )
+}
+
+/** Phones: the branch switcher is an icon button that opens a sheet (keeps the header within 390px). */
+function BranchSheet({ branches, value, onPick }: { branches: BranchOption[]; value: string; onPick: (code: string) => void }) {
+  const [open, setOpen] = React.useState(false)
+  const pick = (code: string) => {
+    setOpen(false)
+    onPick(code)
+  }
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <button type="button" onClick={() => setOpen(true)} aria-label={`Branch: ${value || 'All branches'}`} className="grid size-11 place-items-center rounded-full bg-primary-50 text-primary-700 sm:hidden">
+        {value ? <span className="text-[0.6875rem] font-bold">{value.slice(0, 4)}</span> : <Building2 className="size-5" />}
+      </button>
+      <SheetContent title="Branch" description="Focus every page on one branch, or see the whole college.">
+        <ul className="space-y-1">
+          {[{ code: '', name: 'All branches' }, ...branches].map((b) => (
+            <li key={b.code || 'all'}>
+              <button
+                type="button"
+                onClick={() => pick(b.code)}
+                aria-current={b.code === value ? 'true' : undefined}
+                className={cn('flex w-full items-center gap-3 rounded-[14px] px-3 py-3 text-left text-sm', b.code === value ? 'bg-primary-50 font-semibold text-primary-700' : 'text-ink-900 hover:bg-surface-muted')}
+              >
+                {b.code && <span className="w-12 font-semibold">{b.code}</span>}
+                <span className="truncate">{b.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </SheetContent>
+    </Sheet>
   )
 }
 

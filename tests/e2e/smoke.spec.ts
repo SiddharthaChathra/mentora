@@ -66,10 +66,12 @@ test('mobile shows bottom navigation', async ({ page }) => {
   await expect(page.getByRole('navigation', { name: /primary|main|bottom/i }).last()).toBeVisible()
 })
 
-test('student can sign up and lands on setup', async ({ page }) => {
+test('student can sign up with a USN email and lands on setup', async ({ page }) => {
+  // nnm23cs001-style: college prefix, year, branch code (cs → CSE), roll number. A random prefix keeps it unique.
+  const usn = `${Array.from({ length: 4 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('')}23cs${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
   await page.goto('/signup')
   await page.fill('#full_name', 'E2E Student')
-  await page.fill('#email', `e2e.signup.${Date.now()}@example.com`)
+  await page.fill('#email', `${usn}@example.com`)
   await page.fill('#password', 'Signup-Test-123')
   await page.fill('#confirm', 'Signup-Test-123')
   await page.getByRole('button', { name: /create student account/i }).click()

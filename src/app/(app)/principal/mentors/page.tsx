@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { getSemesterScope } from '@/server/scope'
-import { listBranches, loadCollege, principalBranch } from '@/server/services/branches'
+import { listBranches, loadCollegeDigest, principalBranch } from '@/server/services/branches'
 import { fmtRelative } from '@/lib/utils'
 import { ScopeChip } from '@/components/shell/scope-chip'
 import { PageHeader } from '@/components/ui/page-header'
@@ -12,6 +13,7 @@ import { EmptyState } from '@/components/ui/states'
 import { DirectoryToolbar } from '@/features/roster/directory-toolbar'
 
 export const metadata: Metadata = { title: 'Mentors by branch' }
+const PREVIEW = 6
 
 /** All mentors grouped by branch with workload bars; read-only (capacity and assignments stay with the HOD). */
 export default async function PrincipalMentors({ searchParams }: { searchParams: Promise<{ q?: string; load?: string; branch?: string }> }) {
@@ -20,8 +22,10 @@ export default async function PrincipalMentors({ searchParams }: { searchParams:
   const db = await createClient()
   const scope = await getSemesterScope()
   const selected = await principalBranch(db, sp.branch)
-  const parts = await loadCollege(db, selected ? [selected] : await listBranches(db), scope)
+  const parts = await loadCollegeDigest(db, selected ? [selected] : await listBranches(db), scope)
   const q = sp.q?.toLowerCase()
+  // All branches: a preview per branch keeps the page light at college size; one branch shows everyone.
+  const cap = selected ? Infinity : PREVIEW
   const groups = parts.map((p) => {
     const riskBy = new Map(p.roster.map((r) => [r.id, r.risk]))
     return {
@@ -60,7 +64,7 @@ export default async function PrincipalMentors({ searchParams }: { searchParams:
                   <span className="num text-sm font-medium text-ink-500">· {g.mentors.length} mentors</span>
                 </h2>
                 <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {g.mentors.map((m) => {
+                  {g.mentors.slice(0, cap).map((m) => {
                     const over = m.mentees.length > m.capacity
                     return (
                       <li key={m.id} className="rounded-xl bg-surface p-5 shadow-2">
@@ -99,6 +103,11 @@ export default async function PrincipalMentors({ searchParams }: { searchParams:
                     )
                   })}
                 </ul>
+                {g.mentors.length > cap && (
+                  <Link href={`/principal/mentors?branch=${g.branch.code}`} className="mt-3 inline-flex text-sm font-semibold text-primary-700 hover:underline">
+                    See all {g.mentors.length} mentors in {g.branch.code} →
+                  </Link>
+                )}
               </section>
             ))}
         </div>

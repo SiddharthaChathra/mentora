@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { ROSTER_TAG } from '@/server/services/branches'
 import { createClient } from '@/server/supabase'
 import { actorOrThrow } from '@/server/authz'
 import { AppError, badRequest, check, handle, must } from '@/server/handle'
@@ -14,6 +15,7 @@ import { assignSchema, gradingSchemeSchema, inviteSchema, subjectSchema, thresho
 const refreshHod = () => {
   revalidatePath('/hod', 'layout')
   revalidatePath('/principal', 'layout')
+  updateTag(ROSTER_TAG)
 }
 
 // ───────────────────────────── Users & roles ─────────────────────────────

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { getSemesterScope } from '@/server/scope'
-import { listBranches, loadCollege, principalBranch } from '@/server/services/branches'
+import { listBranches, loadCollegeDigest, principalBranch } from '@/server/services/branches'
 import { ScopeChip } from '@/components/shell/scope-chip'
 import { PageHeader } from '@/components/ui/page-header'
 import { Pill } from '@/components/ui/primitives'
@@ -11,6 +12,7 @@ import { NotifyHodButton } from '@/features/principal/notify-hod'
 import { ReadOnlyBanner } from '@/features/principal/read-only-banner'
 
 export const metadata: Metadata = { title: 'Interventions' }
+const PREVIEW = 8
 
 /** Flagged students across branches, grouped by branch; reasons always shown; read-only with "Notify HOD". */
 export default async function PrincipalInterventions({ searchParams }: { searchParams: Promise<{ branch?: string }> }) {
@@ -20,7 +22,7 @@ export default async function PrincipalInterventions({ searchParams }: { searchP
   const scope = await getSemesterScope()
   const selected = await principalBranch(db, sp.branch)
   const branches = selected ? [selected] : await listBranches(db)
-  const parts = await loadCollege(db, branches, scope)
+  const parts = await loadCollegeDigest(db, branches, scope)
   const { data: followups } = await db.from('intervention_followups').select('id, student_id, note, created_at').eq('status', 'OPEN')
   const fBy = new Map((followups ?? []).map((f) => [f.student_id, f]))
   const groups = parts.map((p) => ({
@@ -58,11 +60,16 @@ export default async function PrincipalInterventions({ searchParams }: { searchP
               <span className="num text-sm font-medium text-ink-500">· {g.rows.length} flagged</span>
             </h2>
             <InterventionsBoard
-              rows={g.rows}
+              rows={selected ? g.rows : g.rows.slice(0, PREVIEW)}
               readOnly
               studentBase="/principal/students"
               action={<NotifyHodButton departmentId={g.branch.id} code={g.branch.code} count={g.rows.length} hasHod={!!g.branch.headId} />}
             />
+            {!selected && g.rows.length > PREVIEW && (
+              <Link href={`/principal/interventions?branch=${g.branch.code}`} className="mt-3 inline-flex text-sm font-semibold text-primary-700 hover:underline">
+                See all {g.rows.length} flagged in {g.branch.code} →
+              </Link>
+            )}
           </section>
         ))}
       </div>

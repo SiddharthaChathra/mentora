@@ -40,7 +40,7 @@ export function ChartFrame({
           </h2>
           {description && <p className="text-ink-500 mt-0.5 text-sm">{description}</p>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {action}
           <Segmented
             size="sm"

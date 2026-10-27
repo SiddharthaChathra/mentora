@@ -44,7 +44,7 @@ export async function loadRoster(db: DB, studentIds: string[], departmentId: str
     Promise.all(chunks.map((c) => db.from('mentor_recommendations').select('student_id, status, kind, due_date, review_date').in('student_id', c).in('kind', ['GOAL', 'ACTION_POINT']).neq('status', 'COMPLETED'))),
     Promise.all(chunks.map((c) => db.from('mentoring_sessions').select('student_id, scheduled_at, status').in('student_id', c).neq('status', 'CANCELLED'))),
   ])
-  const [{ byStudent, scheme }, thresholds] = await Promise.all([loadManyAcademics(db, studentIds, departmentId), loadThresholds(db, departmentId)])
+  const [{ byStudent, scheme }, thresholds] = await Promise.all([loadManyAcademics(db, studentIds, departmentId, { slim: true }), loadThresholds(db, departmentId)])
 
   const pBy = new Map(profiles.flatMap((r) => r.data ?? []).map((p) => [p.user_id, p]))
   const uBy = new Map(users.flatMap((r) => r.data ?? []).map((u) => [u.id, u]))

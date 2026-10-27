@@ -4,7 +4,7 @@ import { ArrowLeftRight, Building2, Crown, LifeBuoy, ShieldAlert, UserX, Users }
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { getSemesterScope } from '@/server/scope'
-import { branchHealth, listBranches, loadCollege, principalBranch } from '@/server/services/branches'
+import { branchHealth, listBranches, loadCollegeDigest, principalBranch } from '@/server/services/branches'
 import { firstName } from '@/lib/utils'
 import { ScopeChip } from '@/components/shell/scope-chip'
 import { Greeting3D, HeroStatCard, PastelStatTile } from '@/components/ui/display'
@@ -53,7 +53,7 @@ export default async function PrincipalOverview({ searchParams }: { searchParams
   const scope = await getSemesterScope()
   const branches = await listBranches(db)
   const [parts, { count: pendingTransfers }] = await Promise.all([
-    loadCollege(db, branches, scope),
+    loadCollegeDigest(db, branches, scope),
     db.from('student_branch_transfers').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
   ])
   const rows: BranchHealthRow[] = parts.map((p) => ({ id: p.branch.id, code: p.branch.code, name: p.branch.name, headName: p.branch.headName, ...branchHealth(p) }))
@@ -87,11 +87,11 @@ export default async function PrincipalOverview({ searchParams }: { searchParams
       <div className="space-y-5">
         <section className="grid gap-5 lg:grid-cols-12" aria-label="Summary">
           <HeroStatCard
-            className="lg:col-span-4"
+            className="min-w-0 lg:col-span-4"
             label="College mentoring coverage"
             value={coverage}
             suffix="%"
-            caption={total ? `${assigned} of ${total} students across ${branches.length} branches have a mentor` : undefined}
+            caption={total ? `${assigned} of ${total} students have a mentor` : undefined}
             emptyText="No students registered yet"
             cta={{ label: 'See branches →', href: '/principal/branches' }}
           />

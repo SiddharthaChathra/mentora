@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { ROSTER_TAG } from '@/server/services/branches'
 import { createClient } from '@/server/supabase'
 import { actorOrThrow } from '@/server/authz'
 import { badRequest, check, handle, must } from '@/server/handle'
@@ -9,6 +10,7 @@ import { badRequest, check, handle, must } from '@/server/handle'
 const refresh = () => {
   revalidatePath('/principal', 'layout')
   revalidatePath('/hod', 'layout')
+  updateTag(ROSTER_TAG)
 }
 
 const branchSchema = z.object({

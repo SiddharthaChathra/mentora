@@ -861,6 +861,11 @@ isOneToOne: false
 "notify_branch_hod":
 { Args: { "p_body": string,"p_department": string,"p_title": string }; Returns: number
                            },
+"policy_inventory":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "cmd": string,"policyname": string,"qual": string,"schemaname": string,"tablename": string,"with_check": string
+            }[]
+                           },
 "request_branch_transfer":
 { Args: { "p_reason": string,"p_student": string,"p_to": string }; Returns: string
                            },
@@ -881,6 +886,11 @@ isOneToOne: false
                            },
 "set_user_status":
 { Args: { "p_status": Database["public"]['Enums']["user_status"],"p_user": string }; Returns: undefined
+                           },
+"tables_without_rls":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "tablename": string
+            }[]
                            }
           }
           Enums: {

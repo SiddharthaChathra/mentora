@@ -4,8 +4,7 @@ import { ChevronDown } from 'lucide-react'
 import { requireRole } from '@/server/authz'
 import { createClient } from '@/server/supabase'
 import { getSemesterScope } from '@/server/scope'
-import { listBranches, loadCollege, principalBranch, type Branch } from '@/server/services/branches'
-import { slim, type SlimRoster } from '@/server/services/roster'
+import { listBranches, loadCollegeDigest, principalBranch, type BranchDigest } from '@/server/services/branches'
 import { fmt2 } from '@/lib/utils'
 import { ScopeChip } from '@/components/shell/scope-chip'
 import { PageHeader } from '@/components/ui/page-header'
@@ -23,7 +22,7 @@ export const metadata: Metadata = { title: 'Students by branch' }
 const PAGE = 25
 const SECTION_PAGE = 10
 type SP = { q?: string; branch?: string; semester?: string; year?: string; risk?: string; mentor?: string; completion?: string; sort?: string; page?: string; view?: string; open?: string }
-type Row = SlimRoster & { branch: Branch; years: string[] }
+type Row = BranchDigest['roster'][number] & { branch: BranchDigest['branch'] }
 
 /**
  * Every student in the college, grouped by branch (MB-13). Read-only: rows open the read-only profile.
@@ -37,10 +36,10 @@ export default async function PrincipalStudents({ searchParams }: { searchParams
   const semester = sp.semester && sp.semester !== 'all' ? Number(sp.semester) : scope
   const [branches, selected] = await Promise.all([listBranches(db), principalBranch(db, sp.branch)])
   const shown = selected ? [selected] : branches
-  const [parts, { data: years }] = await Promise.all([loadCollege(db, shown, semester), db.from('academic_years').select('label').order('label', { ascending: false })])
+  const [parts, { data: years }] = await Promise.all([loadCollegeDigest(db, shown, semester), db.from('academic_years').select('label').order('label', { ascending: false })])
 
   const q = sp.q?.trim().toLowerCase()
-  let rows: Row[] = parts.flatMap((p) => p.roster.map((r) => ({ ...slim(r), branch: p.branch, years: r.semesters.map((s) => s.academicYear) })))
+  let rows: Row[] = parts.flatMap((p) => p.roster.map((r) => ({ ...r, branch: p.branch })))
   if (q) rows = rows.filter((r) => (r.name ?? '').toLowerCase().includes(q) || (r.usn ?? '').toLowerCase().includes(q))
   if (sp.year && sp.year !== 'all') rows = rows.filter((r) => r.years.includes(sp.year!))
   if (sp.risk === 'flagged') rows = rows.filter((r) => r.risk !== 'none')

@@ -179,7 +179,7 @@ export function SignupForm() {
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       {error && <FormAlert>{error}</FormAlert>}
       <Input id="full_name" label="Full name" autoComplete="name" required {...form.register('full_name')} error={form.formState.errors.full_name?.message} />
-      <Input id="email" label="College email" type="email" autoComplete="email" inputMode="email" required {...form.register('email')} error={form.formState.errors.email?.message} />
+      <Input id="email" label="College email" hint="Your USN email, e.g. nnm23cs001@… — your branch is taken from it." type="email" autoComplete="email" inputMode="email" required {...form.register('email')} error={form.formState.errors.email?.message} />
       <PasswordInput id="password" label="Password" autoComplete="new-password" required {...form.register('password')} error={form.formState.errors.password?.message} />
       <PasswordRules value={pw} />
       <PasswordInput id="confirm" label="Confirm password" autoComplete="new-password" required {...form.register('confirm')} error={form.formState.errors.confirm?.message} />

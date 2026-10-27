@@ -29,10 +29,13 @@ async function targetBranch(actor: Actor, role: Role, requested?: string | null)
 
 /** Existing account the actor may manage: HOD → mentee/mentor of own branch; Principal → anyone but a Principal. */
 async function manageable(actor: Actor, userId: string) {
+  const principal = actor.role === 'PRINCIPAL' && actor.status === 'ACTIVE'
+  const hod = actor.role === 'HOD' && actor.status === 'ACTIVE' && actor.hodActive && !!actor.departmentId
+  if (!principal && !hod) throw forbidden()
   const { data: u } = await createAdminClient().from('users').select('id, email, status, role, department_id').eq('id', userId).maybeSingle()
   if (!u) throw forbidden()
-  if (actor.role === 'PRINCIPAL' && actor.status === 'ACTIVE' && u.role !== 'PRINCIPAL') return u
-  if (actor.role === 'HOD' && actor.hodActive && u.department_id === actor.departmentId && (u.role === 'MENTEE' || u.role === 'MENTOR')) return u
+  if (principal && u.role !== 'PRINCIPAL') return u
+  if (hod && u.department_id === actor.departmentId && (u.role === 'MENTEE' || u.role === 'MENTOR')) return u
   throw forbidden()
 }
 

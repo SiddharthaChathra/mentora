@@ -1,5 +1,6 @@
 import 'server-only'
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 import { serverEnv } from './env'
@@ -22,3 +23,14 @@ export async function createClient() {
 }
 
 export type DB = Awaited<ReturnType<typeof createClient>>
+
+/**
+ * A client acting as the user behind `accessToken` (RLS applies exactly as for createClient). Used where a
+ * request-scoped cookie store is unavailable, e.g. inside unstable_cache.
+ */
+export function createTokenClient(accessToken: string): DB {
+  return createSupabaseClient<Database>(serverEnv.supabaseUrl, serverEnv.anonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  }) as unknown as DB
+}

@@ -8,6 +8,7 @@ const ROLES = [
   { role: 'mentee', email: 'ananya.sharma0@demo.mentora.edu', password: DEMO },
   { role: 'mentor', email: 'ramesh.rao@demo.mentora.edu', password: DEMO },
   { role: 'hod', email: process.env.SEED_HOD_EMAIL!, password: process.env.SEED_HOD_PASSWORD! },
+  { role: 'principal', email: process.env.SEED_PRINCIPAL_EMAIL!, password: process.env.SEED_PRINCIPAL_PASSWORD! },
 ] as const
 
 const PROFILE_TABS = ['', '?tab=academics', '?tab=analytics', '?tab=mentoring', '?tab=resources', '?tab=sessions', '?tab=journey', '?tab=report']
@@ -15,6 +16,7 @@ const ROUTES: Record<string, string[]> = {
   mentee: ['/mentee', '/mentee/academics', '/mentee/academics/1', '/mentee/analytics', '/mentee/mentoring', '/mentee/mentoring?tab=plan', '/mentee/resources', '/mentee/sessions', '/mentee/journey', '/mentee/profile', '/notifications', '/account'],
   mentor: ['/mentor', '/mentor/mentees', '/mentor/verifications', '/mentor/verifications?tab=corrections', '/mentor/recommendations', '/mentor/resources', '/mentor/sessions', '/mentor/analytics', '/mentor/reports', '/notifications', '/account', '@mentee'],
   hod: ['/hod', '/hod/students', '/hod/mentors', '/hod/assignments', '/hod/interventions', '/hod/users', '/hod/settings', '/hod/imports', '/hod/exports', '/hod/audit', '/hod/analytics', '/notifications', '/account', '@student', '@mentorDetail'],
+  principal: ['/principal?branch=ALL', '/principal?branch=CSE', '/principal/students', '/principal/students?view=table', '/principal/branches', '/principal/branches/CSE', '/principal/mentors', '/principal/analytics', '/principal/interventions', '/principal/hods', '/principal/transfers', '/principal/users', '/principal/imports', '/principal/exports', '/principal/settings', '/principal/audit', '/notifications', '/account', '@pstudent'],
 }
 
 async function login(page: Page, email: string, password: string) {
@@ -22,15 +24,15 @@ async function login(page: Page, email: string, password: string) {
   await page.fill('input[type=email]', email)
   await page.fill('input[type=password]', password)
   await page.click('button[type=submit]')
-  await page.waitForURL(/\/(mentee|mentor|hod|setup)/, { timeout: 90_000 })
+  await page.waitForURL(/\/(mentee|mentor|hod|principal|setup)/, { timeout: 90_000 })
   const skip = page.getByRole('button', { name: 'Skip tour' })
   if (await skip.isVisible().catch(() => false)) await skip.click()
 }
 
 async function expand(page: Page, route: string): Promise<string[]> {
   if (!route.startsWith('@')) return [route]
-  const sel = route === '@mentee' ? 'a[href^="/mentor/mentees/"]' : route === '@student' ? 'a[href^="/hod/students/"]' : 'a[href^="/hod/mentors/"]'
-  await page.goto(route === '@mentee' ? '/mentor/mentees' : route === '@student' ? '/hod/students' : '/hod/mentors')
+  const sel = { '@mentee': 'a[href^="/mentor/mentees/"]', '@student': 'a[href^="/hod/students/"]', '@pstudent': 'a[href^="/principal/students/"]' }[route] ?? 'a[href^="/hod/mentors/"]'
+  await page.goto({ '@mentee': '/mentor/mentees', '@student': '/hod/students', '@pstudent': '/principal/students?view=table' }[route] ?? '/hod/mentors')
   const href = (await page.locator(sel).first().getAttribute('href'))!.split('?')[0]!
   return route === '@mentorDetail' ? [href] : PROFILE_TABS.map((t) => href + t)
 }

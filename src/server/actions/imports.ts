@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { ROSTER_TAG } from '@/server/services/branches'
 import { createClient } from '@/server/supabase'
 import { actorOrThrow } from '@/server/authz'
 import { AppError, check, handle, must } from '@/server/handle'
@@ -184,6 +185,7 @@ export async function commitImport(jobId: string, opts: { duplicates: 'skip' | '
     await db.from('audit_logs').insert({ actor_id: actor.id, action: 'import.commit', entity_type: 'import_jobs', entity_id: job.id, after: { kind: job.kind, ...summary } as never })
     revalidatePath('/hod', 'layout')
     revalidatePath('/principal', 'layout')
+    updateTag(ROSTER_TAG)
     return { summary, failures: failures.length }
   })
 }
