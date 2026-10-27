@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { createClient } from '@/server/supabase'
-import { actorOrThrow, ROLE_HOME } from '@/server/authz'
+import { actorOrThrow, ROLE_HOME, type Role } from '@/server/authz'
 import { AppError, check, handle, must } from '@/server/handle'
 import { rateLimit } from '@/server/rate-limit'
 import { sniffFile } from '@/server/files'
@@ -12,9 +12,9 @@ import { getSettings } from '@/server/services/people'
 import { studentCompletion } from '@/lib/profile-completion'
 import { hodProfileSchema, mentorProfileSchema, passwordSchema, studentAboutSchema, studentAcademicSchema, studentPersonalSchema } from '@/lib/validators'
 
-const profileTable = (role: 'MENTEE' | 'MENTOR' | 'HOD') => (role === 'MENTEE' ? 'student_profiles' : role === 'MENTOR' ? 'mentor_profiles' : 'hod_profiles')
+const profileTable = (role: Role) => (role === 'MENTEE' ? 'student_profiles' : role === 'MENTOR' ? 'mentor_profiles' : 'hod_profiles')
 
-async function ensureProfileRow(role: 'MENTEE' | 'MENTOR' | 'HOD', userId: string) {
+async function ensureProfileRow(role: Role, userId: string) {
   const db = await createClient()
   const table = profileTable(role)
   const { data } = await db.from(table).select('user_id').eq('user_id', userId).maybeSingle()
@@ -45,7 +45,7 @@ export async function saveDraft(step: number, values: Record<string, unknown>) {
     const v = z.record(z.string(), z.unknown()).parse(values)
     if (JSON.stringify(v).length > 20_000) throw new AppError('BAD_REQUEST', 'Draft too large')
     const db = await ensureProfileRow(actor.role, actor.id)
-    if (actor.role === 'HOD') return { savedAt: new Date().toISOString() }
+    if (actor.role === 'HOD' || actor.role === 'PRINCIPAL') return { savedAt: new Date().toISOString() }
     const table = actor.role === 'MENTEE' ? 'student_profiles' : 'mentor_profiles'
     check(await db.from(table).update({ draft: v as never, draft_step: s }).eq('user_id', actor.id))
     return { savedAt: new Date().toISOString() }
@@ -115,9 +115,9 @@ export async function saveMentorProfile(input: unknown) {
 
 export async function saveHodProfile(input: unknown) {
   return handle(async () => {
-    const actor = await actorOrThrow('HOD')
+    const actor = await actorOrThrow('HOD', 'PRINCIPAL')
     const v = hodProfileSchema.parse(input)
-    const db = await ensureProfileRow('HOD', actor.id)
+    const db = await ensureProfileRow(actor.role, actor.id)
     check(await db.from('hod_profiles').update({ full_name: v.full_name, phone: v.phone ?? null, designation: v.designation ?? null }).eq('user_id', actor.id))
     refresh()
     return null

@@ -128,7 +128,7 @@ export function StudentReport({ data }: { data: NonNullable<ReportData> }) {
           </View>
         </View>
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Confidential — for the student, assigned mentor and authorised department staff only.</Text>
+          <Text style={s.footerText}>Confidential — for the student, assigned mentor and authorised branch staff only.</Text>
         </View>
 
         <Text style={s.title}>{st.name}</Text>
@@ -148,7 +148,7 @@ export function StudentReport({ data }: { data: NonNullable<ReportData> }) {
             {[
               ['Name', st.name],
               ['USN', st.usn ?? '—'],
-              ['Department', st.department ?? '—'],
+              ['Branch', st.department ?? '—'],
               ['Program', st.program ?? '—'],
               ['Current semester', st.semester ? `Semester ${st.semester}${st.section ? ` · Section ${st.section}` : ''}` : '—'],
               ['Academic year', st.academicYear ?? '—'],

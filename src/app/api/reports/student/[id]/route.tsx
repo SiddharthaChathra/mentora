@@ -12,10 +12,10 @@ import { stampPageNumbers } from '@/server/report/paginate'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-/** Individual student PDF. Only the student's ACTIVE mentor or their HOD; every download is audited. */
+/** Individual student PDF. The student's ACTIVE mentor, their branch HOD or the Principal (read-only); every download is audited. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return handleRoute(async () => {
-    const actor = await actorOrThrow('MENTOR', 'HOD')
+    const actor = await actorOrThrow('MENTOR', 'HOD', 'PRINCIPAL')
     const id = z.uuid().parse((await params).id)
     const db = await createClient()
     await assertCanViewStudent(actor, id, db)

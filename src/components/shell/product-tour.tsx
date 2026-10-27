@@ -27,6 +27,12 @@ const STEPS: Record<Role, Step[]> = {
     { target: 'search', title: 'Search everyone', body: 'Jump to any student or mentor by name or USN.' },
     { target: 'semester', title: 'Filter by semester', body: 'Dashboards and lists respect the semester you choose here.' },
   ],
+  PRINCIPAL: [
+    { title: 'The whole college at a glance', body: 'Mentoring coverage, branch health and the branches that need you, from real records.' },
+    { target: 'branch', title: 'Switch branch', body: 'Look at every branch together, or focus on one. It only narrows what you see.' },
+    { target: 'students', title: 'Students by branch', body: 'Every student, grouped by branch. Profiles open read-only; HODs and mentors keep ownership.' },
+    { target: 'search', title: 'Search everyone', body: 'Jump to any student or mentor in any branch by name or USN.' },
+  ],
 }
 
 export function ProductTour({ role, userId, open, onOpenChange }: { role: Role; userId: string; open: boolean; onOpenChange: (v: boolean) => void }) {

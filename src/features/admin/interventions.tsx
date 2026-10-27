@@ -31,7 +31,8 @@ export type InterventionRow = {
   openFollowup: { id: string; note: string; createdAt: string } | null
 }
 
-export function InterventionsBoard({ rows }: { rows: InterventionRow[] }) {
+/** HOD: select students and ask their mentors to follow up. Principal (readOnly): observe; the page adds "Notify HOD". */
+export function InterventionsBoard({ rows, readOnly = false, studentBase = '/hod/students', action }: { rows: InterventionRow[]; readOnly?: boolean; studentBase?: string; action?: React.ReactNode }) {
   const router = useRouter()
   const [selected, setSelected] = React.useState<string[]>([])
   const [rule, setRule] = React.useState('all')
@@ -53,12 +54,16 @@ export function InterventionsBoard({ rows }: { rows: InterventionRow[] }) {
           <FilterSelect label="Priority" value={severity} onChange={(e) => setSeverity(e.target.value)} options={[{ value: 'all', label: 'Any priority' }, { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }]} />
           <FilterSelect label="Mentor" value={mentorFilter} onChange={(e) => setMentorFilter(e.target.value)} options={[{ value: 'all', label: 'All mentors' }, ...mentorNames.map((m) => ({ value: m, label: m }))]} />
         </div>
-        <Button disabled={!selected.length} onClick={() => setOpen(true)}>
-          <BellRing /> Request follow-up{selected.length ? ` (${selected.length})` : ''}
-        </Button>
+        {readOnly ? (
+          action
+        ) : (
+          <Button disabled={!selected.length} onClick={() => setOpen(true)}>
+            <BellRing /> Request follow-up{selected.length ? ` (${selected.length})` : ''}
+          </Button>
+        )}
       </div>
       <div className="overflow-hidden rounded-xl bg-surface shadow-2">
-        <div className="border-b border-line bg-surface-muted px-4 py-2.5">
+        <div className={readOnly ? 'hidden' : 'border-b border-line bg-surface-muted px-4 py-2.5'}>
           <Checkbox
             id="iv-all"
             label={`Select ${shown.length} shown`}
@@ -70,10 +75,10 @@ export function InterventionsBoard({ rows }: { rows: InterventionRow[] }) {
           {shown.map((r) => (
             <li key={r.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:px-5">
               <div className="flex items-start gap-3 sm:w-72 sm:shrink-0">
-                <Checkbox id={`iv-${r.id}`} label={<span className="sr-only">Select {r.name}</span>} checked={selected.includes(r.id)} onCheckedChange={(v) => setSelected(v ? [...selected, r.id] : selected.filter((x) => x !== r.id))} className="mt-2" />
+                {!readOnly && <Checkbox id={`iv-${r.id}`} label={<span className="sr-only">Select {r.name}</span>} checked={selected.includes(r.id)} onCheckedChange={(v) => setSelected(v ? [...selected, r.id] : selected.filter((x) => x !== r.id))} className="mt-2" />}
                 <Avatar userId={r.id} name={r.name} hasImage={r.hasAvatar} size="sm" />
                 <div className="min-w-0">
-                  <Link href={`/hod/students/${r.id}`} className="block truncate font-medium text-ink-900 hover:text-primary-700">
+                  <Link href={`${studentBase}/${r.id}`} className="block truncate font-medium text-ink-900 hover:text-primary-700">
                     {r.name ?? 'Student'}
                   </Link>
                   <p className="num text-xs text-ink-500">

@@ -13,6 +13,9 @@ import {
   LifeBuoy,
   MessageSquareHeart,
   MessageSquarePlus,
+  Building2,
+  ArrowLeftRight,
+  Crown,
   Network,
   PenLine,
   Route,
@@ -52,7 +55,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { href: '/mentor/reports', label: 'PDF reports', icon: FileText },
   ],
   HOD: [
-    { href: '/hod', label: 'Department', icon: LayoutGrid, exact: true },
+    { href: '/hod', label: 'Branch', icon: LayoutGrid, exact: true },
     { href: '/hod/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/hod/interventions', label: 'Interventions', icon: ShieldAlert },
     { href: '/hod/students', label: 'Students', icon: Users },
@@ -64,6 +67,21 @@ export const NAV: Record<Role, NavItem[]> = {
     { href: '/hod/settings', label: 'Settings', icon: Settings2 },
     { href: '/hod/audit', label: 'Audit history', icon: History },
   ],
+  PRINCIPAL: [
+    { href: '/principal', label: 'College', icon: LayoutGrid, exact: true },
+    { href: '/principal/students', label: 'Students', icon: Users, tour: 'students' },
+    { href: '/principal/branches', label: 'Branches', icon: Building2 },
+    { href: '/principal/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/principal/interventions', label: 'Interventions', icon: ShieldAlert },
+    { href: '/principal/mentors', label: 'Mentors', icon: LifeBuoy },
+    { href: '/principal/hods', label: 'HODs', icon: Crown },
+    { href: '/principal/transfers', label: 'Transfers', icon: ArrowLeftRight, badgeKey: 'transfers' },
+    { href: '/principal/users', label: 'Users', icon: UserCog },
+    { href: '/principal/imports', label: 'Imports', icon: FileUp },
+    { href: '/principal/exports', label: 'Exports', icon: FileDown },
+    { href: '/principal/settings', label: 'Settings', icon: Settings2 },
+    { href: '/principal/audit', label: 'Audit history', icon: History },
+  ],
 }
 
 /** Bottom navigation on phones: four destinations; the centre "+" opens QUICK_ACTIONS. */
@@ -71,6 +89,7 @@ export const MOBILE_NAV: Record<Role, string[]> = {
   MENTEE: ['/mentee', '/mentee/academics', '/mentee/mentoring', '/mentee/resources'],
   MENTOR: ['/mentor', '/mentor/mentees', '/mentor/verifications', '/mentor/sessions'],
   HOD: ['/hod', '/hod/students', '/hod/assignments', '/hod/interventions'],
+  PRINCIPAL: ['/principal', '/principal/students', '/principal/branches', '/principal/analytics'],
 }
 
 export type QuickAction = { label: string; href: string; icon: LucideIcon; key?: string; description: string }
@@ -87,10 +106,15 @@ export const QUICK_ACTIONS: Record<Role, QuickAction[]> = {
     { label: 'Schedule a session', href: '/mentor/sessions?new=1', icon: CalendarPlus, key: 's', description: 'One-to-one or group' },
   ],
   HOD: [
-    { label: 'Invite people', href: '/hod/users?invite=1', icon: UserPlus, key: 'i', description: 'Students, mentors or HODs' },
+    { label: 'Invite people', href: '/hod/users?invite=1', icon: UserPlus, key: 'i', description: 'Students or mentors in your branch' },
     { label: 'Assign mentors', href: '/hod/assignments?filter=unassigned', icon: Network, key: 'a', description: 'Place unassigned students' },
     { label: 'Bulk import', href: '/hod/imports', icon: FileUp, description: 'CSV or Excel with preview' },
   ],
+  PRINCIPAL: [
+    { label: 'Appoint an HOD', href: '/principal/hods', icon: Crown, key: 'h', description: 'Choose or change a branch head' },
+    { label: 'Move a student', href: '/principal/transfers?move=1', icon: ArrowLeftRight, key: 't', description: 'Transfer to another branch' },
+    { label: 'Export', href: '/principal/exports', icon: FileDown, description: 'College-wide or per branch' },
+  ],
 }
 
-export const ROLE_LABEL: Record<Role, string> = { MENTEE: 'Mentee', MENTOR: 'Mentor', HOD: 'Head of Department' }
+export const ROLE_LABEL: Record<Role, string> = { MENTEE: 'Mentee', MENTOR: 'Mentor', HOD: 'Head of Department', PRINCIPAL: 'Principal' }

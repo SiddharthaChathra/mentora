@@ -110,7 +110,7 @@ export async function parseFile(name: string, bytes: Uint8Array): Promise<Record
 }
 
 /** Validate rows and detect duplicates within the file and against existing data. */
-export async function validateRows(db: DB, kind: ImportKind, raw: Record<string, string>[], departmentId: string): Promise<ParsedRow[]> {
+export async function validateRows(db: DB, kind: ImportKind, raw: Record<string, string>[], departmentId: string, branchCode?: string): Promise<ParsedRow[]> {
   const def = IMPORT_KINDS[kind]
   const missing = def.columns.filter((c) => ['email', 'usn', 'code', 'subject_code', 'semester_no'].includes(c) && raw.length && !(c in raw[0]!))
   const seen = new Set<string>()
@@ -118,6 +118,8 @@ export async function validateRows(db: DB, kind: ImportKind, raw: Record<string,
     const parsed = def.schema.safeParse(r)
     const errors = parsed.success ? [] : parsed.error.issues.map((x) => `${String(x.path[0] ?? 'row')}: ${x.message}`)
     if (missing.length) errors.unshift(`missing column(s): ${missing.join(', ')}`)
+    // Optional "branch" column: a row for another branch can never be imported here.
+    if (branchCode && r.branch && r.branch.trim().toUpperCase() !== branchCode) errors.push(`branch: this row is for ${r.branch.trim().toUpperCase()}, not ${branchCode}`)
     const data = (parsed.success ? parsed.data : r) as Record<string, unknown>
     const k = def.key(data)
     const dup = k && seen.has(k) ? 'file' : null

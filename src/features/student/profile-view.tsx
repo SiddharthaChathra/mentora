@@ -26,6 +26,8 @@ import { RiskChip } from '@/features/roster/roster'
 import { AnalyticsPanel } from './analytics-panel'
 import { buildJourney } from './journey'
 import { ProfileFab } from './profile-fab'
+import { TransferRequestButton } from '@/features/branch/transfer-request'
+import { listBranches } from '@/server/services/branches'
 
 const TABS = ['overview', 'academics', 'analytics', 'mentoring', 'resources', 'sessions', 'journey', 'report'] as const
 type Tab = (typeof TABS)[number]
@@ -46,6 +48,8 @@ export async function StudentProfileView({
   const profile = await getStudentProfile(db, studentId)
   if (!profile) notFound()
   const isMentor = actor.role === 'MENTOR'
+  // The Principal observes like an HOD (read-only); every write path is still gated by role + RLS.
+  const viewer = actor.role === 'PRINCIPAL' ? 'HOD' : actor.role
   const tab: Tab = TABS.find((t) => t === searchParams.tab) ?? 'overview'
   const dept = profile.departmentId
   const [mentor, academics, thresholds] = await Promise.all([getActiveMentor(db, studentId), loadStudentAcademics(db, studentId, dept), loadThresholds(db, dept)])
@@ -60,7 +64,7 @@ export async function StudentProfileView({
     { value: 'resources', label: 'Resources', icon: 'resources' as const },
     { value: 'sessions', label: 'Sessions', icon: 'sessions' as const },
     { value: 'journey', label: 'Journey', icon: 'journey' as const },
-    ...(isMentor || actor.role === 'HOD' ? [{ value: 'report', label: 'Report', icon: 'report' as const }] : []),
+    ...(isMentor || viewer === 'HOD' ? [{ value: 'report', label: 'Report', icon: 'report' as const }] : []),
   ]
 
   return (
@@ -106,7 +110,7 @@ export async function StudentProfileView({
                 </Link>
               </>
             )}
-            {(isMentor || actor.role === 'HOD') && (
+            {(isMentor || viewer === 'HOD') && (
               <a href={`/api/reports/student/${studentId}`} className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-primary-700 hover:bg-primary-50">
                 <Download className="size-4" /> Download report
               </a>
@@ -121,11 +125,11 @@ export async function StudentProfileView({
 
       <div className="pt-6">
         {tab === 'overview' && <OverviewTab db={db} actor={actor} studentId={studentId} profile={profile} mentor={mentor} academics={academics} flags={flags} href={href} />}
-        {tab === 'academics' && <AcademicsTab db={db} actor={actor} studentId={studentId} academics={academics} />}
-        {tab === 'analytics' && <AnalyticsPanel db={db} studentId={studentId} departmentId={dept} params={searchParams} viewer={actor.role} />}
-        {tab === 'mentoring' && <MentoringTab db={db} actor={actor} studentId={studentId} canWrite={isMentor} />}
-        {tab === 'resources' && <ResourcesTab db={db} actor={actor} studentId={studentId} href={href} />}
-        {tab === 'sessions' && <SessionsTab db={db} actor={actor} studentId={studentId} />}
+        {tab === 'academics' && <AcademicsTab db={db} actor={actor} departmentId={dept} studentId={studentId} academics={academics} />}
+        {tab === 'analytics' && <AnalyticsPanel db={db} studentId={studentId} departmentId={dept} params={searchParams} viewer={viewer} />}
+        {tab === 'mentoring' && <MentoringTab db={db} actor={actor} viewer={viewer} departmentId={dept} studentId={studentId} canWrite={isMentor} />}
+        {tab === 'resources' && <ResourcesTab db={db} actor={actor} viewer={viewer} departmentId={dept} studentId={studentId} href={href} />}
+        {tab === 'sessions' && <SessionsTab db={db} actor={actor} viewer={viewer} studentId={studentId} />}
         {tab === 'journey' && <JourneyTab db={db} actor={actor} studentId={studentId} academics={academics} href={href} />}
         {tab === 'report' && <ReportTab db={db} actor={actor} studentId={studentId} academics={academics} />}
       </div>
@@ -249,15 +253,19 @@ async function OverviewTab({
           <CardHeader title="Next session" />
           <CardBody>{sessions[0] ? <SessionCard session={sessions[0]} /> : <p className="text-sm text-ink-500">Nothing scheduled.</p>}</CardBody>
         </Card>
-        {actor.role === 'HOD' && (
+        {(actor.role === 'HOD' || actor.role === 'PRINCIPAL') && (
           <>
             <Card>
-              <CardHeader title="Mentor" action={<Link href={`/hod/assignments?student=${studentId}`} className="text-sm font-medium text-primary-600 hover:underline">Change</Link>} />
+              <CardHeader
+                title="Mentor"
+                action={actor.role === 'HOD' ? <Link href={`/hod/assignments?student=${studentId}`} className="text-sm font-medium text-primary-600 hover:underline">Change</Link> : undefined}
+              />
               <CardBody>
                 <MentorCard mentor={mentor} />
               </CardBody>
             </Card>
             <AssignmentHistory db={db} studentId={studentId} />
+            {actor.role === 'HOD' && <BranchTransferCard db={db} actor={actor} studentId={studentId} />}
           </>
         )}
       </div>
@@ -298,8 +306,8 @@ async function AssignmentHistory({ db, studentId }: { db: DB; studentId: string 
   )
 }
 
-async function AcademicsTab({ db, actor, studentId, academics }: { db: DB; actor: Actor; studentId: string; academics: Awaited<ReturnType<typeof loadStudentAcademics>> }) {
-  const [subjects, pending] = await Promise.all([listSubjects(db, actor.departmentId), pendingCorrectionTargets(db, studentId)])
+async function AcademicsTab({ db, actor, studentId, academics, departmentId }: { db: DB; actor: Actor; studentId: string; academics: Awaited<ReturnType<typeof loadStudentAcademics>>; departmentId: string | null }) {
+  const [subjects, pending] = await Promise.all([listSubjects(db, departmentId), pendingCorrectionTargets(db, studentId)])
   if (!academics.semesters.length) return <Card><EmptyState illustration="no-marks" title="No academic records yet" description="The student hasn’t added any semesters." /></Card>
   return (
     <div className="space-y-5">
@@ -315,23 +323,25 @@ async function AcademicsTab({ db, actor, studentId, academics }: { db: DB; actor
   )
 }
 
-async function MentoringTab({ db, actor, studentId, canWrite }: { db: DB; actor: Actor; studentId: string; canWrite: boolean }) {
-  const [items, subjects, settings] = await Promise.all([listRecommendations(db, studentId, actor.id, { withHistory: true }), listSubjects(db, actor.departmentId), getSettings(db)])
-  return <MentoringWorkspace items={items} viewer={actor.role} studentId={studentId} subjects={subjects} attendanceEnabled={settings.attendanceEnabled} canWrite={canWrite} />
+type Viewer = 'MENTEE' | 'MENTOR' | 'HOD'
+
+async function MentoringTab({ db, actor, viewer, studentId, canWrite, departmentId }: { db: DB; actor: Actor; viewer: Viewer; studentId: string; canWrite: boolean; departmentId: string | null }) {
+  const [items, subjects, settings] = await Promise.all([listRecommendations(db, studentId, actor.id, { withHistory: true }), listSubjects(db, departmentId), getSettings(db)])
+  return <MentoringWorkspace items={items} viewer={viewer} studentId={studentId} subjects={subjects} attendanceEnabled={settings.attendanceEnabled} canWrite={canWrite} />
 }
 
-async function ResourcesTab({ db, actor, studentId, href }: { db: DB; actor: Actor; studentId: string; href: string }) {
+async function ResourcesTab({ db, actor, viewer, studentId, href, departmentId }: { db: DB; actor: Actor; viewer: Viewer; studentId: string; href: string; departmentId: string | null }) {
   const [items, subjects, mentees] = await Promise.all([
     listResources(db, actor.id, { studentId, ...(actor.role === 'MENTOR' ? { mentorId: actor.id } : {}) }),
-    listSubjects(db, actor.departmentId),
+    listSubjects(db, departmentId),
     actor.role === 'MENTOR' ? listMentees(db, actor.id) : Promise.resolve([]),
   ])
-  return <ResourcesWorkspace items={items} viewer={actor.role} subjects={subjects} mentees={mentees.map((m) => ({ id: m.id, name: m.name }))} fixedStudentId={studentId} basePath={`${href}?tab=resources`} />
+  return <ResourcesWorkspace items={items} viewer={viewer} subjects={subjects} mentees={mentees.map((m) => ({ id: m.id, name: m.name }))} fixedStudentId={studentId} basePath={`${href}?tab=resources`} />
 }
 
-async function SessionsTab({ db, actor, studentId }: { db: DB; actor: Actor; studentId: string }) {
+async function SessionsTab({ db, viewer, studentId }: { db: DB; actor: Actor; viewer: Viewer; studentId: string }) {
   const sessions = await listSessions(db, { studentId })
-  return <SessionsWorkspace sessions={sessions} viewer={actor.role} fixedStudentId={studentId} />
+  return <SessionsWorkspace sessions={sessions} viewer={viewer} fixedStudentId={studentId} />
 }
 
 async function JourneyTab({ db, actor, studentId, academics, href }: { db: DB; actor: Actor; studentId: string; academics: Awaited<ReturnType<typeof loadStudentAcademics>>; href: string }) {
@@ -385,5 +395,21 @@ async function ReportTab({ db, actor, studentId, academics }: { db: DB; actor: A
         </Card>
       </div>
     </div>
+  )
+}
+
+/** HOD only: request that the Principal moves this student to another branch. */
+async function BranchTransferCard({ db, actor, studentId }: { db: DB; actor: Actor; studentId: string }) {
+  const [branches, { data: pending }] = await Promise.all([
+    listBranches(db),
+    db.from('student_branch_transfers').select('id').eq('student_id', studentId).eq('status', 'PENDING').maybeSingle(),
+  ])
+  return (
+    <Card>
+      <CardHeader title="Branch" description={branches.find((b) => b.id === actor.departmentId)?.name} />
+      <CardBody>
+        <TransferRequestButton studentId={studentId} pending={!!pending} branches={branches.filter((b) => b.id !== actor.departmentId).map((b) => ({ id: b.id, code: b.code, name: b.name }))} />
+      </CardBody>
+    </Card>
   )
 }

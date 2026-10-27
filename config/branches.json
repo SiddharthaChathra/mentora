@@ -1,0 +1,10 @@
+[
+  { "code": "CSE",  "usn_code": "cs", "name": "Computer Science and Engineering" },
+  { "code": "ISE",  "usn_code": "is", "name": "Information Science and Engineering" },
+  { "code": "AIML", "usn_code": "ml", "name": "Artificial Intelligence and Machine Learning" },
+  { "code": "MCA",  "usn_code": "mc", "name": "Master of Computer Applications" },
+  { "code": "ECE",  "usn_code": "ec", "name": "Electronics and Communication Engineering" },
+  { "code": "EEE",  "usn_code": "ee", "name": "Electrical and Electronics Engineering" },
+  { "code": "ME",   "usn_code": "me", "name": "Mechanical Engineering" },
+  { "code": "CV",   "usn_code": "cv", "name": "Civil Engineering" }
+]

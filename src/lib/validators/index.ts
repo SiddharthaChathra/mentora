@@ -258,6 +258,9 @@ export const inviteSchema = z.object({
   email: z.email('Enter a valid email').trim().toLowerCase(),
   role: z.enum(['MENTEE', 'MENTOR', 'HOD']),
   full_name: z.string().trim().max(120).optional(),
+  /** Principal only: the branch the person joins. An HOD's invite always uses their own branch. */
+  department_id: z.uuid('Choose a branch').optional(),
+  appoint: z.boolean().optional(),
 })
 
 export const thresholdsSchema = z.object({

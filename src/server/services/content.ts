@@ -29,5 +29,9 @@ export async function shellBadges(db: DB, actor: Actor): Promise<Record<string, 
     ])
     return { verifications: (subs ?? 0) + (crs ?? 0) }
   }
+  if (actor.role === 'PRINCIPAL') {
+    const { count } = await db.from('student_branch_transfers').select('id', { count: 'exact', head: true }).eq('status', 'PENDING')
+    return { transfers: count ?? 0 }
+  }
   return {}
 }

@@ -8,8 +8,8 @@ import type { RosterEntry } from '@/server/services/roster'
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
 
-/** Cohort analytics computed from a roster (mentor: own mentees; HOD: department). */
-export function CohortAnalytics({ roster, extra }: { roster: RosterEntry[]; extra?: React.ReactNode }) {
+/** Cohort analytics computed from a roster (mentor: own mentees; HOD: branch; Principal: college, trend lines per branch). */
+export function CohortAnalytics({ roster, extra, groupOf }: { roster: RosterEntry[]; extra?: React.ReactNode; groupOf?: (r: RosterEntry) => string }) {
   const withCgpa = roster.filter((r) => r.cgpa != null)
   const avgCgpa = avg(withCgpa.map((r) => r.cgpa!))
   let pass = 0
@@ -19,7 +19,7 @@ export function CohortAnalytics({ roster, extra }: { roster: RosterEntry[]; extr
   for (const r of roster) {
     for (const s of r.semesters) {
       if (s.displaySgpa != null) {
-        const sec = r.sectionName ? `Section ${r.sectionName}` : 'All'
+        const sec = groupOf ? groupOf(r) : r.sectionName ? `Section ${r.sectionName}` : 'All'
         const m = bySemSection.get(s.semesterNo) ?? new Map<string, number[]>()
         m.set(sec, [...(m.get(sec) ?? []), s.displaySgpa])
         bySemSection.set(s.semesterNo, m)

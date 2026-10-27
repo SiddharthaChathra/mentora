@@ -8,6 +8,7 @@ import { clientIp } from '@/server/rate-limit'
 import { buildExport } from '@/server/exports'
 import { toCsv, toXlsx } from '@/server/imports'
 import { getSettings } from '@/server/services/people'
+import { listBranches, principalBranch } from '@/server/services/branches'
 import { TableReport } from '@/server/report/table-document'
 import { stampPageNumbers } from '@/server/report/paginate'
 
@@ -16,18 +17,32 @@ export const dynamic = 'force-dynamic'
 
 const KINDS = ['department-summary', 'mentor-workload', 'assignments', 'interventions', 'academic-summary', 'my-mentees'] as const
 
-/** Controlled exports: HOD for department reports, mentors only for their own mentee list. Every export is audited. */
+/**
+ * Controlled exports: HOD for their branch, Principal college-wide or per branch (?branch=CODE only narrows),
+ * mentors only for their own mentee list. Every export is audited.
+ */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ kind: string }> }) {
   return handleRoute(async () => {
     const kind = z.enum(KINDS).parse((await params).kind)
-    const actor = await actorOrThrow('HOD', 'MENTOR')
+    const actor = await actorOrThrow('HOD', 'MENTOR', 'PRINCIPAL')
     if (actor.role === 'MENTOR' && kind !== 'my-mentees') throw forbidden()
-    if (actor.role === 'HOD' && kind === 'my-mentees') throw forbidden()
+    if (actor.role !== 'MENTOR' && kind === 'my-mentees') throw forbidden()
     const sp = req.nextUrl.searchParams
     const format = z.enum(['csv', 'xlsx', 'pdf']).parse(sp.get('format') ?? 'csv')
     const db = await createClient()
-    const table = await buildExport(db, actor, kind, { section: sp.get('section') || undefined, semester: sp.get('semester') || undefined })
-    await db.from('audit_logs').insert({ actor_id: actor.id, action: 'export.download', entity_type: 'export', entity_id: kind, after: { format, rows: table.rows.length, section: sp.get('section'), semester: sp.get('semester') }, ip: await clientIp(), user_agent: req.headers.get('user-agent')?.slice(0, 300) ?? null })
+    const branch = actor.role === 'PRINCIPAL' ? await principalBranch(db, sp.get('branch') ?? 'ALL') : null
+    const branches = actor.role === 'PRINCIPAL' ? (branch ? [branch] : await listBranches(db)) : undefined
+    const table = await buildExport(db, actor, kind, { section: sp.get('section') || undefined, semester: sp.get('semester') || undefined, branches })
+    await db.from('audit_logs').insert({
+      actor_id: actor.id,
+      action: 'export.download',
+      entity_type: 'export',
+      entity_id: kind,
+      department_id: branch?.id ?? (actor.role === 'HOD' ? actor.departmentId : null),
+      after: { format, rows: table.rows.length, branch: branch?.code ?? (actor.role === 'PRINCIPAL' ? 'ALL' : null), section: sp.get('section'), semester: sp.get('semester') },
+      ip: await clientIp(),
+      user_agent: req.headers.get('user-agent')?.slice(0, 300) ?? null,
+    })
     const name = `mentora-${kind}-${new Date().toISOString().slice(0, 10)}.${format}`
     if (format === 'csv') {
       return new Response('﻿' + toCsv(table.columns.map((c) => c.key), table.rows), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}"`, 'Cache-Control': 'no-store' } })

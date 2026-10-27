@@ -14,15 +14,26 @@ import { Pill, StatusPill } from '@/components/ui/primitives'
 import { EmptyState } from '@/components/ui/states'
 import { changeRole, changeStatus, inviteUser, resendInvite } from '@/server/actions/admin'
 
-export type UserRow = { id: string; email: string; name: string | null; role: 'MENTEE' | 'MENTOR' | 'HOD'; status: string; createdAt: string; lastSeenAt: string | null; hasAvatar: boolean; isSelf: boolean }
+export type UserRow = { id: string; email: string; name: string | null; role: 'MENTEE' | 'MENTOR' | 'HOD' | 'PRINCIPAL'; status: string; createdAt: string; lastSeenAt: string | null; hasAvatar: boolean; isSelf: boolean; branch?: string | null }
+export type BranchOption = { id: string; code: string; name: string }
 
-const ROLE = { MENTEE: 'Mentee', MENTOR: 'Mentor', HOD: 'HOD' } as const
+const ROLE = { MENTEE: 'Mentee', MENTOR: 'Mentor', HOD: 'HOD', PRINCIPAL: 'Principal' } as const
+type InviteRole = 'MENTEE' | 'MENTOR' | 'HOD'
 
-export function InviteButton() {
+/** HOD: invites mentees and mentors into their own branch (no branch picker). Principal: any role, any branch. */
+export function InviteButton({ branches }: { branches?: BranchOption[] }) {
   const sp = useSearchParams()
   const router = useRouter()
+  const college = !!branches
   const [open, setOpen] = React.useState(sp.get('invite') === '1')
-  const [v, setV] = React.useState({ email: '', role: (sp.get('role') as UserRow['role']) ?? 'MENTEE', full_name: '' })
+  const initialRole = sp.get('role') as InviteRole | null
+  const [v, setV] = React.useState({
+    email: '',
+    role: (initialRole && (college || initialRole !== 'HOD') ? initialRole : 'MENTEE') as InviteRole,
+    full_name: '',
+    department_id: branches?.find((b) => b.code === sp.get('branch')?.toUpperCase())?.id ?? branches?.[0]?.id ?? '',
+    appoint: false,
+  })
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [busy, setBusy] = React.useState(false)
   return (
@@ -33,7 +44,7 @@ export function InviteButton() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           title="Invite a user"
-          description="They’ll get an email to set a password, then complete their profile. Roles are set here and can only be changed by an HOD."
+          description={college ? 'They’ll get an email to set a password, then complete their profile in the branch you choose.' : 'They’ll get an email to set a password, then complete their profile. They join your branch.'}
           size="sm"
           footer={
             <>
@@ -43,7 +54,7 @@ export function InviteButton() {
               <Button
                 loading={busy}
                 onClick={async () => {
-                  const parsed = inviteSchema.safeParse(v)
+                  const parsed = inviteSchema.safeParse(college ? v : { email: v.email, role: v.role, full_name: v.full_name })
                   if (!parsed.success) {
                     setErrors(Object.fromEntries(parsed.error.issues.map((i) => [String(i.path[0]), i.message])))
                     return
@@ -56,7 +67,7 @@ export function InviteButton() {
                     return toast.error(res.error.message)
                   }
                   toast.success(`Invitation sent to ${parsed.data.email}`)
-                  setV({ email: '', role: v.role, full_name: '' })
+                  setV({ ...v, email: '', full_name: '', appoint: false })
                   setOpen(false)
                   router.refresh()
                 }}
@@ -73,13 +84,29 @@ export function InviteButton() {
               id="inv-role"
               label="Role"
               value={v.role}
-              onChange={(e) => setV({ ...v, role: e.target.value as UserRow['role'] })}
+              onChange={(e) => setV({ ...v, role: e.target.value as InviteRole })}
               options={[
                 { value: 'MENTEE', label: 'Mentee (student)' },
                 { value: 'MENTOR', label: 'Mentor (faculty)' },
-                { value: 'HOD', label: 'HOD (administrator)' },
+                ...(college ? [{ value: 'HOD', label: 'HOD (head of a branch)' }] : []),
               ]}
             />
+            {college && (
+              <Select
+                id="inv-branch"
+                label="Branch"
+                value={v.department_id}
+                onChange={(e) => setV({ ...v, department_id: e.target.value })}
+                error={errors.department_id}
+                options={branches!.map((b) => ({ value: b.id, label: `${b.code} · ${b.name}` }))}
+              />
+            )}
+            {college && v.role === 'HOD' && (
+              <label className="flex items-start gap-2 text-sm text-ink-700">
+                <input type="checkbox" className="mt-0.5 size-4 accent-primary-600" checked={v.appoint} onChange={(e) => setV({ ...v, appoint: e.target.checked })} />
+                <span>Appoint as head of this branch now (the current HOD’s appointment ends)</span>
+              </label>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -87,7 +114,8 @@ export function InviteButton() {
   )
 }
 
-export function UsersTable({ rows }: { rows: UserRow[] }) {
+/** Role menu offers MENTEE ↔ MENTOR only; HOD appointments live on the Principal's HOD page. */
+export function UsersTable({ rows, college = false }: { rows: UserRow[]; college?: boolean }) {
   const router = useRouter()
   const [confirm, setConfirm] = React.useState<null | { kind: 'role'; user: UserRow; role: UserRow['role'] } | { kind: 'status'; user: UserRow; status: 'ACTIVE' | 'SUSPENDED' }>(null)
   const [busy, setBusy] = React.useState(false)
@@ -115,7 +143,8 @@ export function UsersTable({ rows }: { rows: UserRow[] }) {
                 </p>
                 <p className="truncate text-sm text-ink-500">{u.email}</p>
               </div>
-              <Pill tone={u.role === 'HOD' ? 'brand' : u.role === 'MENTOR' ? 'info' : 'neutral'}>{ROLE[u.role]}</Pill>
+              {college && u.branch && <Pill tone="neutral">{u.branch}</Pill>}
+              <Pill tone={u.role === 'HOD' || u.role === 'PRINCIPAL' ? 'brand' : u.role === 'MENTOR' ? 'info' : 'neutral'}>{ROLE[u.role]}</Pill>
               <StatusPill status={u.status} />
               <span className="hidden w-32 text-right text-xs text-ink-500 md:block">{u.lastSeenAt ? `Seen ${fmtRelative(u.lastSeenAt)}` : `Added ${fmtDate(u.createdAt, 'd MMM')}`}</span>
               <Menu>
@@ -125,13 +154,17 @@ export function UsersTable({ rows }: { rows: UserRow[] }) {
                   </Button>
                 </MenuTrigger>
                 <MenuContent>
-                  <MenuLabel>Change role</MenuLabel>
-                  {(['MENTEE', 'MENTOR', 'HOD'] as const).map((r) => (
-                    <MenuItem key={r} icon={ShieldCheck} disabled={r === u.role} onSelect={() => setConfirm({ kind: 'role', user: u, role: r })}>
-                      {ROLE[r]}
-                    </MenuItem>
-                  ))}
-                  <MenuSeparator />
+                  {u.role !== 'PRINCIPAL' && (u.role !== 'HOD' || college) && (
+                    <>
+                      <MenuLabel>Change role</MenuLabel>
+                      {(['MENTEE', 'MENTOR'] as const).map((r) => (
+                        <MenuItem key={r} icon={ShieldCheck} disabled={r === u.role} onSelect={() => setConfirm({ kind: 'role', user: u, role: r })}>
+                          {ROLE[r]}
+                        </MenuItem>
+                      ))}
+                      <MenuSeparator />
+                    </>
+                  )}
                   {u.status === 'INVITED' && (
                     <MenuItem
                       icon={Send}

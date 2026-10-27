@@ -11,7 +11,7 @@ import { Input, Switch } from '@/components/ui/field'
 import { ConfirmDialog, Dialog, DialogContent } from '@/components/ui/overlay'
 import { Card, CardBody, CardHeader, Pill } from '@/components/ui/primitives'
 import { Segmented } from '@/components/ui/navigation'
-import { deleteSection, recomputeSummaries, saveAcademicYear, saveAppSettings, saveGradingScheme, saveSection, saveSubject, saveThresholds, verifySubject } from '@/server/actions/admin'
+import { deleteSection, recomputeSummaries, saveAcademicYear, saveAppSettings, saveCollegeSettings, saveGradingScheme, saveSection, saveSubject, saveThresholds, verifySubject } from '@/server/actions/admin'
 
 type Scheme = { id: string; name: string; version: number; bands: GradeBand[]; pass_pct: number; mse_weight: number; active: boolean; created_at: string }
 type Subject = { id: string; code: string; name: string; credits: number; semester: number | null; mse_max: number | null; see_max: number | null; is_verified: boolean }
@@ -24,6 +24,11 @@ export type SettingsProps = {
   subjects: Subject[]
   app: { institutionName: string; programCredits: number | null; optionalFields: { dob?: boolean; gender?: boolean; address?: boolean }; attendanceEnabled: boolean; aiEnabled: boolean }
   aiAvailable: boolean
+  /** hod: branch settings (grading/rules only as a branch override when allowed). principal: college defaults. */
+  mode?: 'hod' | 'principal'
+  /** Why grading + risk rules are read-only for this HOD (branch overrides switched off by the Principal). */
+  locked?: string | null
+  college?: { allowBranchGrading: boolean; studentEmailDomain: string; selfSignup: boolean }
 }
 
 function useRun() {
@@ -39,7 +44,8 @@ function useRun() {
 }
 
 export function SettingsWorkspace(props: SettingsProps) {
-  const [tab, setTab] = React.useState<'grading' | 'thresholds' | 'structure' | 'subjects' | 'features'>('grading')
+  const principal = props.mode === 'principal'
+  const [tab, setTab] = React.useState<'grading' | 'thresholds' | 'structure' | 'subjects' | 'features' | 'college'>('grading')
   return (
     <div>
       <Segmented
@@ -47,24 +53,38 @@ export function SettingsWorkspace(props: SettingsProps) {
         label="Settings section"
         value={tab}
         onChange={setTab}
-        options={[
-          { value: 'grading', label: 'Grading' },
-          { value: 'thresholds', label: 'Risk rules' },
-          { value: 'structure', label: 'Structure' },
-          { value: 'subjects', label: 'Subjects' },
-          { value: 'features', label: 'Profile & features' },
-        ]}
+        options={
+          principal
+            ? [
+                { value: 'grading', label: 'Grading' },
+                { value: 'thresholds', label: 'Risk rules' },
+                { value: 'college', label: 'College' },
+                { value: 'features', label: 'Profile & features' },
+              ]
+            : [
+                { value: 'grading', label: 'Grading' },
+                { value: 'thresholds', label: 'Risk rules' },
+                { value: 'structure', label: 'Structure' },
+                { value: 'subjects', label: 'Subjects' },
+              ]
+        }
       />
-      {tab === 'grading' && <GradingEditor schemes={props.schemes} />}
-      {tab === 'thresholds' && <ThresholdsForm initial={props.thresholds} />}
+      {props.locked && (tab === 'grading' || tab === 'thresholds') && (
+        <p role="note" className="mb-4 flex items-center gap-2 rounded-[16px] bg-info-100 px-4 py-2.5 text-sm text-info-700">
+          <Lock className="size-4 shrink-0" /> {props.locked}
+        </p>
+      )}
+      {tab === 'grading' && <GradingEditor schemes={props.schemes} locked={!!props.locked} canRecompute={!principal} />}
+      {tab === 'thresholds' && <ThresholdsForm initial={props.thresholds} locked={!!props.locked} />}
       {tab === 'structure' && <Structure sections={props.sections} years={props.years} />}
+      {tab === 'college' && props.college && <CollegeForm initial={props.college} years={props.years} />}
       {tab === 'subjects' && <Subjects subjects={props.subjects} />}
       {tab === 'features' && <Features app={props.app} aiAvailable={props.aiAvailable} />}
     </div>
   )
 }
 
-function GradingEditor({ schemes }: { schemes: Scheme[] }) {
+function GradingEditor({ schemes, locked = false, canRecompute = true }: { schemes: Scheme[]; locked?: boolean; canRecompute?: boolean }) {
   const run = useRun()
   const active = schemes.find((s) => s.active) ?? schemes[0]
   const [name, setName] = React.useState(active?.name ?? '10-point CBCS')
@@ -137,15 +157,19 @@ function GradingEditor({ schemes }: { schemes: Scheme[] }) {
             </ul>
           )}
           <div className="flex flex-wrap gap-2 border-t border-line pt-5">
-            <Button disabled={problems.length > 0} onClick={() => run(() => saveGradingScheme({ name, pass_pct: pass, mse_weight: mse / 100, bands: scheme.bands }), 'New scheme version is active')}>
+            <Button disabled={problems.length > 0 || locked} onClick={() => run(() => saveGradingScheme({ name, pass_pct: pass, mse_weight: mse / 100, bands: scheme.bands }), 'New scheme version is active')}>
               <Save /> Save as new version
             </Button>
-            <Button variant="secondary" onClick={() => run(() => recomputeSummaries('drafts'), 'Draft and submitted semesters recalculated')}>
-              <Calculator /> Recompute drafts
-            </Button>
-            <Button variant="ghost" className="text-danger-700" onClick={() => setConfirm('all')}>
-              Recompute verified too…
-            </Button>
+            {canRecompute && (
+              <>
+                <Button variant="secondary" onClick={() => run(() => recomputeSummaries('drafts'), 'Draft and submitted semesters recalculated')}>
+                  <Calculator /> Recompute drafts
+                </Button>
+                <Button variant="ghost" className="text-danger-700" onClick={() => setConfirm('all')}>
+                  Recompute verified too…
+                </Button>
+              </>
+            )}
           </div>
           <p className="text-xs text-ink-500">Saving never rewrites finalized history. Verified snapshots are only recalculated when you explicitly choose “Recompute verified too”, and that action is audited.</p>
         </CardBody>
@@ -206,7 +230,7 @@ const THRESHOLD_FIELDS = [
   { key: 'PROFILE_INCOMPLETE_DAYS', label: 'Profile incomplete after (days)', hint: 'Since the account was created' },
 ]
 
-function ThresholdsForm({ initial }: { initial: Record<string, number> }) {
+function ThresholdsForm({ initial, locked = false }: { initial: Record<string, number>; locked?: boolean }) {
   const run = useRun()
   const [v, setV] = React.useState<Record<string, string>>(Object.fromEntries(THRESHOLD_FIELDS.map((f) => [f.key, String(initial[f.key] ?? '')])))
   return (
@@ -218,7 +242,7 @@ function ThresholdsForm({ initial }: { initial: Record<string, number> }) {
             <Input key={f.key} id={`th-${f.key}`} label={f.label} hint={f.hint} inputMode="decimal" value={v[f.key] ?? ''} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} />
           ))}
         </div>
-        <Button className="mt-6" onClick={() => run(() => saveThresholds(v), 'Rules saved')}>
+        <Button className="mt-6" disabled={locked} onClick={() => run(() => saveThresholds(v), 'Rules saved')}>
           <Save /> Save rules
         </Button>
       </CardBody>
@@ -226,12 +250,41 @@ function ThresholdsForm({ initial }: { initial: Record<string, number> }) {
   )
 }
 
-function Structure({ sections, years }: { sections: { id: string; name: string }[]; years: SettingsProps['years'] }) {
+/** Principal: academic years, branch grading switch and sign-up rules — the college-wide structure. */
+function CollegeForm({ initial, years }: { initial: NonNullable<SettingsProps['college']>; years: SettingsProps['years'] }) {
+  const run = useRun()
+  const [v, setV] = React.useState(initial)
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader title="Branches & sign-up" description="College-wide rules every branch follows." />
+        <CardBody className="space-y-4">
+          <Switch
+            id="cg-branch-grading"
+            label="Allow branch-specific grading"
+            description="HODs may set their own grading scheme and risk rules for their branch. Off: every branch uses the college default."
+            checked={v.allowBranchGrading}
+            onCheckedChange={(c) => setV({ ...v, allowBranchGrading: c })}
+          />
+          <Switch id="cg-signup" label="Student self sign-up" description="Students create their own account with their USN email; the branch comes from the USN." checked={v.selfSignup} onCheckedChange={(c) => setV({ ...v, selfSignup: c })} />
+          <Input id="cg-domain" label="Student email domain (optional)" placeholder="nmamit.in" hint="When set, self sign-up only accepts …@this-domain." value={v.studentEmailDomain} onChange={(e) => setV({ ...v, studentEmailDomain: e.target.value })} />
+          <Button onClick={() => run(() => saveCollegeSettings(v), 'College settings saved')}>
+            <Save /> Save
+          </Button>
+        </CardBody>
+      </Card>
+      <Structure sections={null} years={years} />
+    </div>
+  )
+}
+
+function Structure({ sections, years }: { sections: { id: string; name: string }[] | null; years: SettingsProps['years'] }) {
   const run = useRun()
   const [sec, setSec] = React.useState('')
   const [y, setY] = React.useState({ label: '', starts_on: '', ends_on: '', is_current: false })
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className={sections ? 'grid gap-4 lg:grid-cols-2' : ''}>
+      {sections && (
       <Card>
         <CardHeader title="Sections" />
         <CardBody>
@@ -253,8 +306,9 @@ function Structure({ sections, years }: { sections: { id: string; name: string }
           </div>
         </CardBody>
       </Card>
+      )}
       <Card>
-        <CardHeader title="Academic years" />
+        <CardHeader title="Academic years" description={sections ? 'Set by the Principal for the whole college.' : undefined} />
         <CardBody>
           <ul className="space-y-2 text-sm">
             {years.map((yr) => (
@@ -267,6 +321,7 @@ function Structure({ sections, years }: { sections: { id: string; name: string }
               </li>
             ))}
           </ul>
+          {!sections && (<>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <Input id="ay-label" label="Label (2026-27)" value={y.label} onChange={(e) => setY({ ...y, label: e.target.value })} />
             <Input id="ay-start" type="date" label="Starts" value={y.starts_on} onChange={(e) => setY({ ...y, starts_on: e.target.value })} />
@@ -276,6 +331,7 @@ function Structure({ sections, years }: { sections: { id: string; name: string }
           <Button className="mt-4" variant="secondary" onClick={async () => (await run(() => saveAcademicYear(y), 'Academic year saved')) && setY({ label: '', starts_on: '', ends_on: '', is_current: false })}>
             <Plus /> Add academic year
           </Button>
+          </>)}
         </CardBody>
       </Card>
     </div>

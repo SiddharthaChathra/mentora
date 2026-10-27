@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { AlertCircle, ArrowLeft, CheckCircle2, Copy, Download, FileSpreadsheet, GraduationCap, LifeBuoy, ListChecks, Upload, Users } from 'lucide-react'
 import { cn, fmtRelative } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/field'
+import { Checkbox, Select } from '@/components/ui/field'
 import { FileDropzone } from '@/components/ui/file-dropzone'
 import { Card, CardBody, CardHeader, IconChip, Pill, StatusPill } from '@/components/ui/primitives'
 import { Segmented } from '@/components/ui/navigation'
@@ -22,8 +22,10 @@ const KINDS = [
 
 export type JobRow = { id: string; kind: string; fileName: string; status: string; total: number; valid: number; errors: number; createdAt: string; summary: Record<string, unknown> }
 
-export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
+/** HOD: imports into their own branch. Principal: passes `branches` and must choose the target branch. */
+export function ImportWizard({ jobs, branches }: { jobs: JobRow[]; branches?: { id: string; code: string; name: string }[] }) {
   const router = useRouter()
+  const [branchId, setBranchId] = React.useState(branches?.[0]?.id ?? '')
   const [kind, setKind] = React.useState<(typeof KINDS)[number]['kind']>('students')
   const [file, setFile] = React.useState<File | null>(null)
   const [preview, setPreview] = React.useState<PreviewResult | null>(null)
@@ -41,6 +43,7 @@ export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
     const fd = new FormData()
     fd.set('kind', kind)
     fd.set('file', file)
+    if (branches) fd.set('department_id', branchId)
     const res = await previewImport(fd)
     setBusy(false)
     if (!res.ok) return toast.error(res.error.message)
@@ -76,6 +79,18 @@ export function ImportWizard({ jobs }: { jobs: JobRow[] }) {
           <Card>
             <CardHeader title="What are you importing?" />
             <CardBody>
+              {branches && (
+                <div className="mb-4 max-w-sm">
+                  <Select
+                    id="imp-branch"
+                    label="Into branch"
+                    hint="Rows with a branch column must match this branch."
+                    value={branchId}
+                    onChange={(e) => setBranchId(e.target.value)}
+                    options={branches.map((b) => ({ value: b.id, label: `${b.code} · ${b.name}` }))}
+                  />
+                </div>
+              )}
               <div role="radiogroup" aria-label="Import type" className="grid gap-3 sm:grid-cols-2">
                 {KINDS.map((k) => (
                   <button

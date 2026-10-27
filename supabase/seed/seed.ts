@@ -1,22 +1,46 @@
 /**
- * Base seed (idempotent): department, sections, academic years, default grading scheme,
- * risk thresholds, app settings and the first HOD from SEED_HOD_EMAIL / SEED_HOD_PASSWORD.
+ * Base seed (idempotent): branches from config/branches.json, sections, academic years, the college default
+ * grading scheme + risk thresholds, app settings, the first HOD (SEED_HOD_*) appointed to EXISTING_DATA_BRANCH_CODE,
+ * and the Principal (SEED_PRINCIPAL_*).
  * Usage: pnpm db:seed   (ENV_FILE=.env.production.local pnpm db:seed for prod)
  */
+import { readFileSync } from 'node:fs'
 import { admin, DEFAULT_BANDS, ensureAuthUser, env, must } from './lib'
+
+type BranchConfig = { code: string; name: string; usn_code?: string }
+
+export function readBranches(): BranchConfig[] {
+  const list = JSON.parse(readFileSync('config/branches.json', 'utf8')) as BranchConfig[]
+  if (!Array.isArray(list) || !list.length) throw new Error('config/branches.json must list at least one branch')
+  for (const b of list) if (!/^[A-Z0-9]{2,12}$/.test(b.code) || !b.name) throw new Error(`Invalid branch ${JSON.stringify(b)}`)
+  return list
+}
 
 export async function seedBase() {
   const db = admin()
   const hodEmail = env('SEED_HOD_EMAIL').toLowerCase()
   const hodPassword = env('SEED_HOD_PASSWORD')
+  const existingCode = (process.env.EXISTING_DATA_BRANCH_CODE || 'CSE').toUpperCase()
+  const branches = readBranches()
 
-  const dept = must(
-    await db.from('departments').upsert({ code: 'CSE', name: 'Computer Science & Engineering' }, { onConflict: 'code' }).select().single(),
-    'department',
-  )
+  // The department that already holds data is matched to EXISTING_DATA_BRANCH_CODE (renamed if needed, never duplicated).
+  const { data: depts } = await db.from('departments').select('id, code').order('created_at')
+  if (depts?.length === 1 && depts[0]!.code !== existingCode && !depts.some((d) => d.code === existingCode)) {
+    must(await db.from('departments').update({ code: existingCode }).eq('id', depts[0]!.id), 'rename existing branch')
+  }
+  for (const [i, b] of branches.entries()) {
+    must(
+      await db.from('departments').upsert({ code: b.code, name: b.name, usn_code: b.usn_code?.toLowerCase() ?? null, display_order: i }, { onConflict: 'code' }),
+      `branch ${b.code}`,
+    )
+  }
+  const dept = must(await db.from('departments').select().eq('code', existingCode).single(), `branch ${existingCode}`)
 
-  for (const name of ['A', 'B', 'C']) {
-    must(await db.from('sections').upsert({ department_id: dept.id, name }, { onConflict: 'department_id,name' }), `section ${name}`)
+  const { data: allDepts } = await db.from('departments').select('id, code')
+  for (const d of allDepts ?? []) {
+    for (const name of ['A', 'B', 'C']) {
+      must(await db.from('sections').upsert({ department_id: d.id, name }, { onConflict: 'department_id,name' }), `section ${d.code} ${name}`)
+    }
   }
 
   const now = new Date()
@@ -34,11 +58,12 @@ export async function seedBase() {
   must(await db.from('academic_years').update({ is_current: false }).neq('label', currentLabel), 'reset current year')
   must(await db.from('academic_years').update({ is_current: true }).eq('label', currentLabel), 'current year')
 
-  const { data: scheme } = await db.from('grading_schemes').select('id').eq('department_id', dept.id).eq('active', true).maybeSingle()
+  // College default (department_id NULL); branches may override only when the Principal allows it.
+  const { data: scheme } = await db.from('grading_schemes').select('id').is('department_id', null).eq('active', true).maybeSingle()
   if (!scheme) {
     must(
       await db.from('grading_schemes').insert({
-        department_id: dept.id,
+        department_id: null,
         name: '10-point CBCS (credit weighted)',
         version: 1,
         bands: DEFAULT_BANDS,
@@ -55,7 +80,7 @@ export async function seedBase() {
   const thresholds = { STRONG_PCT: 75, DECLINE_PCT_POINTS: 10, SGPA_DROP: 0.5, LOW_PCT: 40, LOW_MIN_COUNT: 2, PROFILE_INCOMPLETE_DAYS: 14 }
   for (const [rule_key, value] of Object.entries(thresholds)) {
     must(
-      await db.from('risk_thresholds').upsert({ department_id: dept.id, rule_key, value }, { onConflict: 'department_id,rule_key', ignoreDuplicates: true }),
+      await db.from('risk_thresholds').upsert({ department_id: null, rule_key, value }, { onConflict: 'department_id,rule_key', ignoreDuplicates: true }),
       `threshold ${rule_key}`,
     )
   }
@@ -66,6 +91,8 @@ export async function seedBase() {
     ai_insights_enabled: false,
     institution_name: 'Mentora Institute of Technology',
     program_total_credits: 160,
+    allow_branch_grading: false,
+    student_email_domain: (process.env.STUDENT_EMAIL_DOMAIN ?? '').trim().toLowerCase(),
   }
   for (const [key, value] of Object.entries(settings)) {
     must(await db.from('app_settings').upsert({ key, value: value as never }, { onConflict: 'key', ignoreDuplicates: true }), `setting ${key}`)
@@ -83,8 +110,23 @@ export async function seedBase() {
     await db.from('hod_profiles').upsert({ user_id: hodId, full_name: 'Dr. Meera Krishnan', designation: 'Professor & Head of Department' }, { onConflict: 'user_id', ignoreDuplicates: true }),
     'HOD profile',
   )
+  const { data: head } = await db.from('department_heads').select('user_id').eq('department_id', dept.id).is('ended_at', null).maybeSingle()
+  if (!head) must(await db.from('department_heads').insert({ department_id: dept.id, user_id: hodId, reason: 'Initial seed' }), 'HOD appointment')
 
-  console.log(`✔ Base seed complete. Department ${dept.code}; HOD ${hodEmail}`)
+  const principalEmail = process.env.SEED_PRINCIPAL_EMAIL?.toLowerCase()
+  if (principalEmail) {
+    const principalId = await ensureAuthUser(db, principalEmail, env('SEED_PRINCIPAL_PASSWORD'))
+    must(
+      await db.from('users').upsert(
+        { id: principalId, email: principalEmail, role: 'PRINCIPAL', status: 'ACTIVE', department_id: null, onboarding_completed_at: new Date().toISOString() },
+        { onConflict: 'id' },
+      ),
+      'Principal user',
+    )
+    must(await db.from('hod_profiles').upsert({ user_id: principalId, full_name: 'Dr. Principal', designation: 'Principal' }, { onConflict: 'user_id', ignoreDuplicates: true }), 'Principal profile')
+  }
+
+  console.log(`✔ Base seed complete. ${branches.length} branches; existing data in ${dept.code}; HOD ${hodEmail}${principalEmail ? '; Principal ' + principalEmail : ''}`)
   return { db, dept, hodId }
 }
 

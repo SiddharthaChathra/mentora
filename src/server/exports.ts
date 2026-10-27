@@ -2,6 +2,7 @@ import 'server-only'
 import type { Actor } from './authz'
 import type { DB } from './supabase'
 import { loadDepartment } from './services/department'
+import { loadCollege, type Branch } from './services/branches'
 import { loadRoster } from './services/roster'
 import { listMentees } from './services/people'
 import { RISK_LABELS } from '@/lib/risk'
@@ -10,7 +11,7 @@ export type ExportKind = 'department-summary' | 'mentor-workload' | 'assignments
 export type ExportTable = { title: string; columns: { key: string; header: string; width?: number }[]; rows: Record<string, string | number | null>[] }
 
 export const EXPORTS: Record<Exclude<ExportKind, 'my-mentees'>, { title: string; description: string }> = {
-  'department-summary': { title: 'Department summary', description: 'Headline figures: students, coverage, CGPA, pass rate and flags by section.' },
+  'department-summary': { title: 'Branch summary', description: 'Headline figures: students, coverage, CGPA, pass rate and flags by section (by branch for college-wide exports).' },
   'mentor-workload': { title: 'Mentor workload', description: 'Mentees, capacity and 30-day mentoring activity per mentor.' },
   assignments: { title: 'Assignment list', description: 'Every student with their current mentor and group.' },
   interventions: { title: 'Students needing intervention', description: 'Flagged students with each indicator and its reason.' },
@@ -19,7 +20,11 @@ export const EXPORTS: Record<Exclude<ExportKind, 'my-mentees'>, { title: string;
 
 const f2 = (n: number | null) => (n == null ? null : Number(n.toFixed(2)))
 
-export async function buildExport(db: DB, actor: Actor, kind: ExportKind, filters: { section?: string; semester?: string }): Promise<ExportTable> {
+/**
+ * HOD: always their own branch. Principal: the branches passed in (one, or the whole college). The caller has
+ * already checked the role; RLS still applies to every query.
+ */
+export async function buildExport(db: DB, actor: Actor, kind: ExportKind, filters: { section?: string; semester?: string; branches?: Branch[] }): Promise<ExportTable> {
   if (kind === 'my-mentees') {
     const mentees = await listMentees(db, actor.id)
     const roster = await loadRoster(db, mentees.map((m) => m.id), actor.departmentId)
@@ -39,17 +44,24 @@ export async function buildExport(db: DB, actor: Actor, kind: ExportKind, filter
     }
   }
 
-  const { roster: all, mentors } = await loadDepartment(db, actor)
+  const parts = actor.role === 'PRINCIPAL' ? await loadCollege(db, filters.branches ?? [], null) : [{ branch: null, ...(await loadDepartment(db, actor)) }]
+  const all = parts.flatMap((p) => p.roster)
+  const mentors = parts.flatMap((p) => p.mentors)
+  const branchOf = new Map(parts.flatMap((p) => p.roster.map((r) => [r.id, p.branch?.code ?? null] as const)))
+  const college = parts.length > 1
   let roster = all
   if (filters.section) roster = roster.filter((r) => r.sectionName === filters.section)
   if (filters.semester) roster = roster.filter((r) => String(r.currentSemester) === filters.semester)
-  const scope = [filters.section && `Section ${filters.section}`, filters.semester && `Semester ${filters.semester}`].filter(Boolean).join(' · ')
+  const scope = [parts.length === 1 && parts[0]!.branch && parts[0]!.branch.code, filters.section && `Section ${filters.section}`, filters.semester && `Semester ${filters.semester}`]
+    .filter(Boolean)
+    .join(' · ')
   const suffix = scope ? ` (${scope})` : ''
 
   switch (kind) {
     case 'department-summary': {
       const groups = new Map<string, typeof roster>()
-      for (const r of roster) groups.set(r.sectionName ?? '—', [...(groups.get(r.sectionName ?? '—') ?? []), r])
+      const key = (r: (typeof roster)[number]) => (college ? (branchOf.get(r.id) ?? '—') : (r.sectionName ?? '—'))
+      for (const r of roster) groups.set(key(r), [...(groups.get(key(r)) ?? []), r])
       const rows = [...groups.entries()]
         .sort()
         .concat([['All', roster]])
@@ -70,9 +82,9 @@ export async function buildExport(db: DB, actor: Actor, kind: ExportKind, filter
           }
         })
       return {
-        title: `Department summary${suffix}`,
+        title: `${college ? 'College' : 'Branch'} summary${suffix}`,
         columns: [
-          { key: 'section', header: 'Section' },
+          { key: 'section', header: college ? 'Branch' : 'Section' },
           { key: 'students', header: 'Students' },
           { key: 'with_mentor', header: 'With mentor' },
           { key: 'coverage_pct', header: 'Coverage %' },

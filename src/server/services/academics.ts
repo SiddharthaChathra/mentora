@@ -79,10 +79,19 @@ export type StudentAcademics = {
 
 const n = (v: unknown) => (v == null ? null : Number(v))
 
+/** Branch overrides apply only while the Principal allows branch-specific grading. */
+export const branchGradingAllowed = cache(async (db: DB) => {
+  const { data } = await db.from('app_settings').select('value').eq('key', 'allow_branch_grading').maybeSingle()
+  return data?.value === true
+})
+
+/** Resolution order: the branch's active override (if allowed) → the college default (department_id NULL). */
 export const loadScheme = cache(async (db: DB, departmentId: string | null) => {
-  if (!departmentId) return { scheme: null as GradingScheme | null, id: null as string | null, row: null }
-  const { data } = await db.from('grading_schemes').select('*').eq('department_id', departmentId).eq('active', true).maybeSingle()
-  if (!data) return { scheme: null, id: null, row: null }
+  const allowBranch = !!departmentId && (await branchGradingAllowed(db))
+  const base = db.from('grading_schemes').select('*').eq('active', true)
+  const { data: rows } = await (allowBranch ? base.or(`department_id.is.null,department_id.eq.${departmentId}`) : base.is('department_id', null))
+  const data = rows?.find((r) => r.department_id === departmentId) ?? rows?.find((r) => r.department_id === null)
+  if (!data) return { scheme: null as GradingScheme | null, id: null as string | null, row: null }
   return {
     id: data.id,
     row: data,
@@ -98,9 +107,12 @@ export const loadScheme = cache(async (db: DB, departmentId: string | null) => {
 })
 
 export const loadThresholds = cache(async (db: DB, departmentId: string | null): Promise<Thresholds> => {
-  if (!departmentId) return DEFAULT_THRESHOLDS
-  const { data } = await db.from('risk_thresholds').select('rule_key, value').eq('department_id', departmentId)
-  return thresholdsFromRows(data ?? [])
+  const allowBranch = !!departmentId && (await branchGradingAllowed(db))
+  const base = db.from('risk_thresholds').select('rule_key, value, department_id')
+  const { data } = await (allowBranch ? base.or(`department_id.is.null,department_id.eq.${departmentId}`) : base.is('department_id', null))
+  // College defaults first, then the branch's own values on top.
+  const rows = [...(data ?? []).filter((r) => r.department_id === null), ...(data ?? []).filter((r) => r.department_id !== null)]
+  return thresholdsFromRows(rows)
 })
 
 const SEMESTER_SELECT = `id, student_id, semester_no, academic_year, status, manual_sgpa, manual_cgpa, submitted_at, verified_at, verified_by, finalized_at, return_note, updated_at,

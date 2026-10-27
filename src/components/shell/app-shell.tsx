@@ -2,11 +2,11 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'motion/react'
 import { Command } from 'cmdk'
-import { Bell, ChevronDown, ChevronsLeft, ChevronsRight, Clock, Compass, Keyboard, LogOut, Menu as MenuIcon, Plus, Search, Settings, Sparkles, UserRound, Wifi } from 'lucide-react'
-import { isScopedRoute } from '@/lib/scope'
+import { Bell, Building2, ChevronDown, ChevronsLeft, ChevronsRight, Clock, Compass, Keyboard, LogOut, Menu as MenuIcon, Plus, Search, Settings, Sparkles, UserRound, Wifi } from 'lucide-react'
+import { isBranchScopedRoute, isScopedRoute } from '@/lib/scope'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/lib/roles'
 import { useLocalStorage } from '@/lib/hooks'
@@ -24,16 +24,26 @@ export type ShellUser = { id: string; name: string | null; email: string; role: 
 
 const isActive = (pathname: string, item: NavItem) => (item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`))
 
+export type BranchOption = { code: string; name: string }
+
 export function AppShell({
   user,
   badges,
   semester,
+  branchChip = null,
+  branches = null,
+  branch = null,
   aiEnabled,
   children,
 }: {
   user: ShellUser
   badges: Record<string, number>
   semester: number | null
+  /** HOD: their one branch, shown as a fixed chip (no branch filter anywhere on HOD screens). */
+  branchChip?: BranchOption | null
+  /** Principal: every branch, for the switcher. */
+  branches?: BranchOption[] | null
+  branch?: string | null
   aiEnabled: boolean
   children: React.ReactNode
 }) {
@@ -185,6 +195,16 @@ export function AppShell({
                 <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Search" className="grid size-11 place-items-center rounded-full bg-surface-muted text-ink-700 md:hidden">
                   <Search className="size-5" />
                 </button>
+                {branchChip && (
+                  <span title={branchChip.name} className="hidden h-11 max-w-[16rem] items-center gap-2 truncate rounded-full bg-primary-50 px-4 text-sm font-semibold text-primary-700 lg:inline-flex">
+                    <Building2 className="size-4 shrink-0" /> {branchChip.code} <span className="truncate font-medium text-primary-600">· {branchChip.name}</span>
+                  </span>
+                )}
+                {branches && isBranchScopedRoute(pathname) && (
+                  <React.Suspense>
+                    <BranchSwitcher branches={branches} value={branch} />
+                  </React.Suspense>
+                )}
                 {isScopedRoute(pathname) && <SemesterSwitcher value={semester} />}
                 {aiEnabled && user.role === 'MENTOR' && (
                   <Link href="/mentor/mentees?ai=1" className="hidden h-11 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-ink-900 hover:border-primary-300 hover:text-primary-700 lg:inline-flex">
@@ -335,6 +355,44 @@ export function AppShell({
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} role={user.role} />
       <ProductTour role={user.role} userId={user.id} open={tourOpen} onOpenChange={setTourOpen} />
     </div>
+  )
+}
+
+/**
+ * Principal branch switcher (MB-15): the URL (?branch=CODE) wins and is remembered in a cookie.
+ * It only narrows what the server already allows; the server re-validates the code on every request.
+ */
+function BranchSwitcher({ branches, value }: { branches: BranchOption[]; value: string | null }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const sp = useSearchParams()
+  const current = (sp.get('branch') ?? value ?? '').toUpperCase()
+  const valid = branches.some((b) => b.code === current) ? current : ''
+  React.useEffect(() => {
+    const fromUrl = sp.get('branch')
+    if (fromUrl != null) document.cookie = `m_branch=${encodeURIComponent(fromUrl.toUpperCase())}; path=/; max-age=31536000; samesite=lax`
+  }, [sp])
+  const set = (code: string) => {
+    document.cookie = `m_branch=${code || 'ALL'}; path=/; max-age=31536000; samesite=lax`
+    const next = new URLSearchParams(sp.toString())
+    next.delete('page')
+    if (code) next.set('branch', code)
+    else next.delete('branch')
+    router.push(`${pathname}${next.size ? `?${next}` : ''}`)
+  }
+  return (
+    <label data-tour="branch" className="relative inline-flex">
+      <span className="sr-only">Branch</span>
+      <select value={valid} onChange={(e) => set(e.target.value)} className="h-10 max-w-[8.5rem] cursor-pointer appearance-none truncate rounded-full border border-primary-200 bg-primary-50 pr-8 pl-3 text-xs font-semibold text-primary-700 outline-none hover:border-primary-300 focus-visible:border-primary-600 sm:h-11 sm:max-w-none sm:pr-9 sm:pl-4 sm:text-sm">
+        <option value="">All branches</option>
+        {branches.map((b) => (
+          <option key={b.code} value={b.code}>
+            {b.code} · {b.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-primary-600 sm:right-3.5" />
+    </label>
   )
 }
 

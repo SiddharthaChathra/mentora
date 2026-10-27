@@ -7,21 +7,46 @@ import { emailLayout, sendEmail } from '@/server/email'
 
 type Role = 'MENTEE' | 'MENTOR' | 'HOD'
 
-function assertHod(actor: Actor) {
-  if (actor.role !== 'HOD' || actor.status !== 'ACTIVE' || !actor.departmentId) throw forbidden('Only the HOD can manage accounts.')
+/**
+ * The branch an account action targets. HOD: always their own branch, MENTEE/MENTOR only.
+ * Principal: any active branch (checked against the DB). Runs BEFORE any service-role call.
+ */
+async function targetBranch(actor: Actor, role: Role, requested?: string | null): Promise<string> {
+  if (actor.status !== 'ACTIVE') throw forbidden()
+  if (actor.role === 'HOD' && actor.hodActive && actor.departmentId) {
+    if (role === 'HOD') throw forbidden('Only the Principal can add a Head of Department.')
+    if (requested && requested !== actor.departmentId) throw forbidden('You can only add people to your own branch.')
+    return actor.departmentId
+  }
+  if (actor.role === 'PRINCIPAL') {
+    if (!requested) throw new AppError('VALIDATION', 'Choose a branch.', { department_id: ['Choose a branch'] })
+    const { data } = await createAdminClient().from('departments').select('id').eq('id', requested).eq('status', 'ACTIVE').maybeSingle()
+    if (!data) throw new AppError('VALIDATION', 'Choose an active branch.', { department_id: ['Choose an active branch'] })
+    return data.id
+  }
+  throw forbidden('Only an HOD or the Principal can manage accounts.')
+}
+
+/** Existing account the actor may manage: HOD → mentee/mentor of own branch; Principal → anyone but a Principal. */
+async function manageable(actor: Actor, userId: string) {
+  const { data: u } = await createAdminClient().from('users').select('id, email, status, role, department_id').eq('id', userId).maybeSingle()
+  if (!u) throw forbidden()
+  if (actor.role === 'PRINCIPAL' && actor.status === 'ACTIVE' && u.role !== 'PRINCIPAL') return u
+  if (actor.role === 'HOD' && actor.hodActive && u.department_id === actor.departmentId && (u.role === 'MENTEE' || u.role === 'MENTOR')) return u
+  throw forbidden()
 }
 
 /**
- * Invite (or re-invite) a user into the HOD's department. Uses the service-role client ONLY after the HOD check.
- * Role and department live in public.users — never in client-editable metadata.
+ * Invite (or re-invite) a user into a branch. Uses the service-role client ONLY after the scope check.
+ * Role and branch live in public.users — never in client-editable metadata.
  */
-export async function inviteUser(actor: Actor, input: { email: string; role: Role; full_name?: string }, opts: { sendEmail?: boolean } = {}) {
-  assertHod(actor)
+export async function inviteUser(actor: Actor, input: { email: string; role: Role; full_name?: string; department_id?: string }, opts: { sendEmail?: boolean } = {}) {
+  const branch = await targetBranch(actor, input.role, input.department_id)
   const admin = createAdminClient()
   const redirectTo = `${serverEnv.siteUrl}/auth/confirm?type=invite&next=/accept-invite`
   const { data: existing } = await admin.from('users').select('id, status, department_id').eq('email', input.email).maybeSingle()
   if (existing && existing.status !== 'INVITED') throw new AppError('CONFLICT', 'That email already has an active account.')
-  if (existing && existing.department_id !== actor.departmentId) throw forbidden('That account belongs to another department.')
+  if (existing && existing.department_id !== branch) throw forbidden('That account belongs to another branch.')
 
   let userId = existing?.id ?? null
   if (opts.sendEmail === false) {
@@ -41,7 +66,7 @@ export async function inviteUser(actor: Actor, input: { email: string; role: Rol
   if (!userId) throw new AppError('INTERNAL', 'Could not create the account.')
 
   const { error: upErr } = await admin.from('users').upsert(
-    { id: userId, email: input.email, role: input.role, status: 'INVITED', department_id: actor.departmentId, invited_by: actor.id },
+    { id: userId, email: input.email, role: input.role, status: 'INVITED', department_id: branch, invited_by: actor.id },
     { onConflict: 'id' },
   )
   if (upErr) throw new AppError('INTERNAL', 'Could not save the account.')
@@ -51,10 +76,8 @@ export async function inviteUser(actor: Actor, input: { email: string; role: Rol
 }
 
 export async function resendInvite(actor: Actor, userId: string) {
-  assertHod(actor)
+  const u = await manageable(actor, userId)
   const admin = createAdminClient()
-  const { data: u } = await admin.from('users').select('email, status, department_id').eq('id', userId).maybeSingle()
-  if (!u || u.department_id !== actor.departmentId) throw forbidden()
   if (u.status !== 'INVITED') throw new AppError('BAD_REQUEST', 'This user has already accepted their invitation.')
   const { error } = await admin.auth.admin.inviteUserByEmail(u.email, { redirectTo: `${serverEnv.siteUrl}/auth/confirm?type=invite&next=/accept-invite` })
   if (error) {
@@ -74,7 +97,7 @@ export async function resendInvite(actor: Actor, userId: string) {
 
 /** Mirror account suspension at the auth layer so existing refresh tokens stop working too. */
 export async function setAuthBan(actor: Actor, userId: string, banned: boolean) {
-  assertHod(actor)
+  await manageable(actor, userId)
   const admin = createAdminClient()
   await admin.auth.admin.updateUserById(userId, { ban_duration: banned ? '876000h' : 'none' })
 }

@@ -96,18 +96,19 @@ export async function commandSearch(q: string) {
       .select('user_id, full_name, usn, current_semester')
       .or(`full_name.ilike.${like},usn.ilike.${like}`)
       .limit(8)
-    const base = actor.role === 'HOD' ? '/hod/students' : '/mentor/mentees'
+    // RLS decides which rows come back (HOD: own branch, Principal: every branch, mentor: active mentees).
+    const base = actor.role === 'PRINCIPAL' ? '/principal/students' : actor.role === 'HOD' ? '/hod/students' : '/mentor/mentees'
     const hits: SearchHit[] = (data ?? []).map((s) => ({
       id: s.user_id,
       name: s.full_name ?? 'Unnamed student',
       sub: [s.usn, s.current_semester ? `Semester ${s.current_semester}` : null].filter(Boolean).join(' · '),
       href: `${base}/${s.user_id}`,
     }))
-    if (actor.role === 'HOD') {
+    if (actor.role === 'HOD' || actor.role === 'PRINCIPAL') {
       const { data: mentors } = await db.from('mentor_profiles').select('user_id, full_name, designation').ilike('full_name', like).limit(5)
-      hits.push(
-        ...(mentors ?? []).map((m) => ({ id: m.user_id, name: m.full_name ?? 'Mentor', sub: m.designation ?? 'Mentor', href: `/hod/mentors/${m.user_id}` })),
-      )
+      const href = (m: { user_id: string; full_name: string | null }) =>
+        actor.role === 'HOD' ? `/hod/mentors/${m.user_id}` : `/principal/mentors?q=${encodeURIComponent(m.full_name ?? '')}`
+      hits.push(...(mentors ?? []).map((m) => ({ id: m.user_id, name: m.full_name ?? 'Mentor', sub: m.designation ?? 'Mentor', href: href(m) })))
     }
     return hits
   })

@@ -27,13 +27,13 @@ export default async function AccountPage() {
   if (actor.role === 'MENTOR') {
     const { data: p } = await db.from('mentor_profiles').select('*').eq('user_id', actor.id).maybeSingle()
     staff = <StaffProfileEditor role="MENTOR" userId={actor.id} avatarPath={actor.avatarPath} departmentName={dept?.name ?? null} mentor={{ full_name: s(p?.full_name), phone: s(p?.phone), official_email: s(p?.official_email), designation: s(p?.designation), faculty_id: s(p?.faculty_id), expertise: p?.expertise ?? [] }} />
-  } else if (actor.role === 'HOD') {
+  } else if (actor.role === 'HOD' || actor.role === 'PRINCIPAL') {
     const { data: p } = await db.from('hod_profiles').select('*').eq('user_id', actor.id).maybeSingle()
     staff = <StaffProfileEditor role="HOD" userId={actor.id} avatarPath={actor.avatarPath} departmentName={dept?.name ?? null} hod={{ full_name: s(p?.full_name), phone: s(p?.phone), designation: s(p?.designation) }} />
   }
   return (
     <>
-      <PageHeader title="Account &" accent="preferences" description={`${actor.email} · ${dept?.name ?? 'No department'}`} />
+      <PageHeader title="Account &" accent="preferences" description={`${actor.email} · ${actor.role === 'PRINCIPAL' ? 'Principal · all branches' : (dept?.name ?? 'No branch')}`} />
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <div className="space-y-4">
           {staff ?? (

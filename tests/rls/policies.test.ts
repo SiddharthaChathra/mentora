@@ -125,14 +125,27 @@ describe('hod', () => {
   })
 })
 
+/** A unique USN-shaped local part: 4-letter test prefix, 2-digit year, branch code, 3-digit roll. */
+const usn = (branch: string) => `${Array.from({ length: 4 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join('')}23${branch}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+
 describe('self sign-up', () => {
-  it('always creates an ACTIVE MENTEE, whatever the client sends', async () => {
+  it('always creates an ACTIVE MENTEE in the branch named by the USN, whatever the client sends', async () => {
     const c = fresh()
-    const email = `rls.signup.${Date.now()}@example.com`
-    const { data, error } = await c.auth.signUp({ email, password: 'Signup-Test-123', options: { data: { signup: 'self', full_name: 'Test Student', role: 'HOD' } } })
+    const local = usn('cs')
+    const { data, error } = await c.auth.signUp({ email: `${local}@example.com`, password: 'Signup-Test-123', options: { data: { signup: 'self', full_name: 'Test Student', role: 'HOD', department_id: 'x' } } })
     expect(error).toBeNull()
-    const { data: u } = await hod.db.from('users').select('role, status').eq('id', data.user!.id).single()
-    expect(u).toEqual({ role: 'MENTEE', status: 'ACTIVE' })
+    const { data: u } = await hod.db.from('users').select('role, status, department_id').eq('id', data.user!.id).single()
+    const { data: cse } = await hod.db.from('departments').select('id').eq('code', 'CSE').single()
+    expect(u).toEqual({ role: 'MENTEE', status: 'ACTIVE', department_id: cse!.id })
+    const { data: p } = await hod.db.from('student_profiles').select('usn, admission_year').eq('user_id', data.user!.id).single()
+    expect(p).toEqual({ usn: local.toUpperCase(), admission_year: 2023 })
+  })
+
+  it('rejects an email that is not a USN, and a USN for a branch that is not set up', async () => {
+    const bad = await fresh().auth.signUp({ email: `not.a.usn.${Date.now()}@example.com`, password: 'Signup-Test-123', options: { data: { signup: 'self' } } })
+    expect(bad.error).not.toBeNull()
+    const unknown = await fresh().auth.signUp({ email: `${usn('zz')}@example.com`, password: 'Signup-Test-123', options: { data: { signup: 'self' } } })
+    expect(unknown.error).not.toBeNull()
   })
 
   it('creates no app account without the sign-up marker', async () => {

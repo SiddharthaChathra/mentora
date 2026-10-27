@@ -21,7 +21,7 @@ export default async function SetupPage() {
   ])
 
   const base: WizardProps = {
-    role: actor.role,
+    role: actor.role === 'PRINCIPAL' ? 'HOD' : actor.role,
     userId: actor.id,
     email: actor.email,
     departmentName: dept?.name ?? null,
