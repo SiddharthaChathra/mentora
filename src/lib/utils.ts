@@ -15,6 +15,20 @@ export function fmtDate(d: string | Date | null | undefined, pattern = 'd MMM yy
   return format(new Date(d), pattern)
 }
 
+/** College time zone for clock times, so server (UTC on Vercel) and browser render the same text. */
+export const COLLEGE_TZ = process.env.NEXT_PUBLIC_TIME_ZONE || 'Asia/Kolkata'
+
+/** e.g. "28 Oct 2026, 09:05" (+":ss" with seconds) in the college time zone. */
+export function fmtDateTime(d: string | Date | null | undefined, opts: { seconds?: boolean } = {}) {
+  if (!d) return '—'
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', { timeZone: COLLEGE_TZ, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(d))
+      .map((x) => [x.type, x.value]),
+  )
+  return `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute}${opts.seconds ? `:${parts.second}` : ''}`
+}
+
 export function fmtRelative(d: string | Date | null | undefined) {
   if (!d) return '—'
   const date = new Date(d)

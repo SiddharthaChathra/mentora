@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { fmtDate } from '@/lib/utils'
+import { fmtDateTime } from '@/lib/utils'
 import { Sheet, SheetContent } from '@/components/ui/overlay'
 import { Pill } from '@/components/ui/primitives'
 import { EmptyState } from '@/components/ui/states'
@@ -61,7 +61,7 @@ export function AuditList({ rows }: { rows: AuditRow[] }) {
                     {changes.length ? changes.slice(0, 3).map((c) => c.key).join(', ') : r.entityId}
                   </span>
                   <span className="text-sm text-ink-700">{r.actor}</span>
-                  <span className="num w-36 text-right text-xs text-ink-500">{fmtDate(r.createdAt, 'd MMM yyyy, HH:mm')}</span>
+                  <span className="num w-36 text-right text-xs text-ink-500">{fmtDateTime(r.createdAt)}</span>
                 </button>
               </li>
             )
@@ -70,7 +70,7 @@ export function AuditList({ rows }: { rows: AuditRow[] }) {
       </div>
       <Sheet open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         {open && (
-          <SheetContent title={`${ENTITY_LABEL[open.entityType] ?? open.entityType} · ${open.action}`} description={`${open.actor} · ${fmtDate(open.createdAt, 'd MMM yyyy, HH:mm:ss')}`} className="max-w-xl">
+          <SheetContent title={`${ENTITY_LABEL[open.entityType] ?? open.entityType} · ${open.action}`} description={`${open.actor} · ${fmtDateTime(open.createdAt, { seconds: true })}`} className="max-w-xl">
             <dl className="mb-4 grid grid-cols-2 gap-3 text-xs">
               <div>
                 <dt className="text-ink-500">Record</dt>
