@@ -1,11 +1,15 @@
 /**
- * Demo data (idempotent-ish: skips if demo mentors already exist unless --force).
- * 1 HOD (from SEED_HOD_*), 6 mentors, 60 mentees, realistic CSE subjects and varied trends.
- * Usage: pnpm db:seed:demo
+ * Demo data (idempotent-ish: a branch is skipped when its demo mentors already exist, unless --force).
+ * Per branch: an HOD, 6 mentors, students with varied trends, records, mentoring, sessions and resources.
+ * Usage: pnpm db:seed:demo                          (first branch only — the original demo)
+ *        DEMO_BRANCHES=ISE,CSE,ECE pnpm db:seed:demo (several branches for the Principal's college view)
+ * The first listed branch keeps the original logins (ramesh.rao@…, ananya.sharma0@…); other branches use
+ * branch-coded emails and USNs. When branches already exist (e.g. production), the base seed is NOT re-run,
+ * so existing HOD / Principal passwords are never reset.
  */
 import { writeFileSync } from 'node:fs'
 import { seedBase } from './seed'
-import { ensureAuthUser, env, must } from './lib'
+import { admin, ensureAuthUser, env, must } from './lib'
 import { computeCgpa, computeSgpa, DEFAULT_SCHEME, type SubjectResultInput } from '../../src/lib/grading/index'
 
 const DEMO_DOMAIN = 'demo.mentora.edu'
@@ -32,14 +36,43 @@ const SUBJECTS: Record<number, [string, string, number][]> = {
 
 const FIRST = ['Ananya', 'Rahul', 'Priya', 'Arjun', 'Sneha', 'Karthik', 'Divya', 'Rohan', 'Meghana', 'Aditya', 'Pooja', 'Vikram', 'Kavya', 'Siddharth', 'Ishita', 'Nikhil', 'Shreya', 'Varun', 'Aishwarya', 'Harsha', 'Neha', 'Akash', 'Tanvi', 'Pranav', 'Lakshmi', 'Manoj', 'Ritika', 'Gautam', 'Bhavana', 'Suhas']
 const LAST = ['Sharma', 'Reddy', 'Iyer', 'Nair', 'Rao', 'Hegde', 'Kulkarni', 'Menon', 'Patil', 'Shetty', 'Gowda', 'Joshi', 'Bhat', 'Pillai', 'Desai', 'Kamath', 'Naidu', 'Verma']
-const MENTORS = [
+const MENTOR_POOL = [
   { name: 'Dr. Ramesh Rao', designation: 'Associate Professor', expertise: ['Algorithms', 'Competitive programming'] },
   { name: 'Dr. Lakshmi Iyer', designation: 'Professor', expertise: ['Machine learning', 'Data science'] },
   { name: 'Prof. Arvind Kulkarni', designation: 'Assistant Professor', expertise: ['Databases', 'Web development'] },
   { name: 'Dr. Fatima Sheikh', designation: 'Associate Professor', expertise: ['Networks', 'Cyber security'] },
   { name: 'Prof. Naveen Hegde', designation: 'Assistant Professor', expertise: ['Embedded systems', 'IoT'] },
   { name: 'Dr. Sunita Menon', designation: 'Professor', expertise: ['Software engineering', 'Career guidance'] },
+  { name: 'Dr. Prakash Shenoy', designation: 'Professor', expertise: ['Signal processing', 'VLSI'] },
+  { name: 'Prof. Rekha Bhandary', designation: 'Assistant Professor', expertise: ['Communication systems', 'Antennas'] },
+  { name: 'Dr. Mohan Acharya', designation: 'Associate Professor', expertise: ['Control systems', 'Robotics'] },
+  { name: 'Prof. Deepa Kini', designation: 'Assistant Professor', expertise: ['Digital electronics', 'Microprocessors'] },
+  { name: 'Dr. Suresh Poojary', designation: 'Professor', expertise: ['Power electronics', 'Renewable energy'] },
+  { name: 'Prof. Anitha Prabhu', designation: 'Assistant Professor', expertise: ['Data structures', 'Career guidance'] },
+  { name: 'Dr. Vinay Pai', designation: 'Associate Professor', expertise: ['Cloud computing', 'DevOps'] },
+  { name: 'Prof. Shalini Rai', designation: 'Assistant Professor', expertise: ['Human-computer interaction', 'UI design'] },
+  { name: 'Dr. Harish Bangera', designation: 'Professor', expertise: ['Thermodynamics', 'CAD'] },
+  { name: 'Prof. Nisha Salian', designation: 'Assistant Professor', expertise: ['Statistics', 'Data analysis'] },
+  { name: 'Dr. Ganesh Kamath', designation: 'Associate Professor', expertise: ['Operating systems', 'Linux'] },
+  { name: 'Prof. Sowmya Udupa', designation: 'Assistant Professor', expertise: ['Web technologies', 'Open source'] },
 ]
+const HOD_NAMES = ['Dr. Meera Krishnan', 'Dr. Raghavendra Bhat', 'Dr. Shobha Nayak', 'Dr. Ashok Shetty', 'Dr. Vidya Holla', 'Dr. Ravi Kotian']
+
+/** ECE flavour for semesters 3–7; other branches use the computing curriculum with their own code prefix. */
+const ECE_SUBJECTS: Record<number, [string, string, number][]> = {
+  3: [['MAT301', 'Transform Calculus & Numerical Methods', 4], ['EC302', 'Network Analysis', 4], ['EC303', 'Analog Electronic Circuits', 4], ['EC304', 'Digital System Design', 3], ['EC305', 'Basic Signal Processing', 3], ['EC306', 'Social Connect & Responsibility', 1]],
+  4: [['MAT401', 'Probability & Statistics', 3], ['EC402', 'Electromagnetic Waves', 4], ['EC403', 'Microcontrollers', 4], ['EC404', 'Communication Theory', 4], ['EC405', 'Control Systems', 3], ['BIO406', 'Biology for Engineers', 1]],
+  5: [['EC501', 'Digital Communication', 4], ['EC502', 'Digital Signal Processing', 4], ['EC503', 'VLSI Design', 3], ['EC504', 'Embedded Systems', 3], ['EC505', 'Research Methodology & IPR', 2], ['ENV506', 'Environmental Studies', 1]],
+  6: [['EC601', 'Computer Networks', 4], ['EC602', 'Antennas & Propagation', 4], ['EC603', 'Wireless Communication', 3], ['EC604', 'Image Processing', 3], ['EC605', 'Mini Project', 2], ['EC606', 'Indian Knowledge System', 1]],
+  7: [['EC701', 'Optical Communication', 4], ['EC702', 'Machine Learning for Signals', 4], ['EC703', 'Internet of Things', 3], ['EC704', 'Satellite Communication', 3], ['EC705', 'Project Phase I', 2]],
+}
+
+/** The subject list for a branch: common first year, then the branch curriculum with its own code prefix. */
+function subjectsFor(code: string): Record<number, [string, string, number][]> {
+  if (code === 'ECE') return { 1: SUBJECTS[1]!, 2: SUBJECTS[2]!, ...ECE_SUBJECTS }
+  const prefix = code === 'CSE' ? 'CS' : code.slice(0, 2).toUpperCase()
+  return Object.fromEntries(Object.entries(SUBJECTS).map(([s, list]) => [s, list.map(([c, n, cr]) => [c.startsWith('CS') ? prefix + c.slice(2) : c, n, cr] as [string, string, number])]))
+}
 const SKILLS = ['Python', 'Java', 'React', 'SQL', 'C++', 'Machine learning', 'Public speaking', 'UI design', 'Git', 'Data analysis', 'Linux', 'Cloud']
 const INTERESTS = ['Open source', 'Robotics', 'Hackathons', 'Music', 'Cricket', 'Photography', 'Startups', 'Research', 'Chess', 'Volunteering']
 
@@ -60,15 +93,57 @@ function baseLevel(a: Archetype, semIdx: number, total: number) {
 
 const yearLabel = (start: number) => `${start}-${String((start + 1) % 100).padStart(2, '0')}`
 
+type DemoBranch = { id: string; code: string; usn_code: string | null }
+
 async function main() {
   const force = process.argv.includes('--force')
-  const { db, dept, hodId } = await seedBase()
   const password = env('DEMO_PASSWORD')
+  const db = admin()
+  // Existing college (e.g. production): never re-run the base seed — it would reset HOD/Principal passwords.
+  const { count: branchCount } = await db.from('departments').select('id', { count: 'exact', head: true })
+  if (!branchCount) await seedBase()
+  const codes = (process.env.DEMO_BRANCHES || process.env.EXISTING_DATA_BRANCH_CODE || 'CSE').split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+  const summary: string[] = []
+  for (const [index, code] of codes.entries()) {
+    const dept = must(await db.from('departments').select('id, code, usn_code').eq('code', code).single(), `branch ${code}`) as DemoBranch
+    summary.push(await seedBranch(db, dept, index, password, force))
+  }
+  writeFileSync('DEMO.md', `# Mentora demo accounts\n\nAll demo accounts use the password in \`DEMO_PASSWORD\`. Existing HODs keep their own passwords.\n\n${summary.join('\n')}`)
+  console.log('✔ Demo data ready for ' + codes.join(', ') + '. Logins written to DEMO.md')
+}
 
-  const { data: existing } = await db.from('users').select('id').eq('role', 'MENTOR').like('email', `%@${DEMO_DOMAIN}`)
+/** The branch's head: the existing appointment, or a demo HOD account appointed now. */
+async function branchHead(db: ReturnType<typeof admin>, dept: DemoBranch, index: number, password: string) {
+  const { data: head } = await db.from('department_heads').select('user_id').eq('department_id', dept.id).is('ended_at', null).maybeSingle()
+  if (head) {
+    const { data: u } = await db.from('users').select('email').eq('id', head.user_id).single()
+    return { id: head.user_id, email: u!.email as string, demo: false }
+  }
+  const email = `hod.${dept.code.toLowerCase()}@${DEMO_DOMAIN}`
+  const id = await ensureAuthUser(db, email, password)
+  must(await db.from('users').upsert({ id, email, role: 'HOD', status: 'ACTIVE', department_id: dept.id, onboarding_completed_at: new Date().toISOString() }, { onConflict: 'id' }), 'demo HOD')
+  must(await db.from('hod_profiles').upsert({ user_id: id, full_name: HOD_NAMES[index % HOD_NAMES.length]!, designation: 'Professor & Head of Department' }, { onConflict: 'user_id' }), 'demo HOD profile')
+  must(await db.from('department_heads').insert({ department_id: dept.id, user_id: id, reason: 'Demo data' }), 'demo HOD appointment')
+  return { id, email, demo: true }
+}
+
+async function seedBranch(db: ReturnType<typeof admin>, dept: DemoBranch, index: number, password: string, force: boolean): Promise<string> {
+  const first = index === 0 // the first branch keeps the original demo logins
+  const tag = first ? '' : `.${dept.code.toLowerCase()}`
+  const studentCount = first ? 60 : Number(process.env.DEMO_STUDENTS_PER_BRANCH || 30)
+  const MENTORS = MENTOR_POOL.slice((index * 6) % MENTOR_POOL.length, ((index * 6) % MENTOR_POOL.length) + 6)
+  const SUBJECTS = subjectsFor(dept.code)
+  const curriculumCode = (c: string) => SUBJECTS[3]!.find(([code]) => code.endsWith(c.slice(-3)))?.[0] ?? c
+  const usnCode = (dept.usn_code ?? dept.code.slice(0, 2)).toUpperCase()
+  const hod = await branchHead(db, dept, index, password)
+  const hodId = hod.id
+  const mentorEmail = (m: { name: string }) => `${m.name.replace(/^(Dr|Prof)\.\s*/, '').split(' ')[0]!.toLowerCase()}.${m.name.split(' ').at(-1)!.toLowerCase()}${tag}@${DEMO_DOMAIN}`
+
+  const { data: existing } = await db.from('users').select('id').eq('role', 'MENTOR').eq('department_id', dept.id).like('email', `%@${DEMO_DOMAIN}`)
   if (existing && existing.length >= 6 && !force) {
-    console.log('ℹ Demo data already present. Re-run with --force to add again.')
-    return
+    console.log(`ℹ ${dept.code}: demo data already present (use --force to add again).`)
+    const { data: students } = await db.from('users').select('email').eq('role', 'MENTEE').eq('department_id', dept.id).like('email', `%@${DEMO_DOMAIN}`).order('created_at').limit(12)
+    return branchSummary(dept.code, hod, MENTORS.map(mentorEmail), (students ?? []).map((s) => s.email))
   }
 
   const sections = must(await db.from('sections').select('id, name').eq('department_id', dept.id).order('name'), 'sections')
@@ -97,7 +172,7 @@ async function main() {
   // Mentors
   const mentorIds: string[] = []
   for (const [i, m] of MENTORS.entries()) {
-    const email = `${m.name.replace(/^(Dr|Prof)\.\s*/, '').split(' ')[0]!.toLowerCase()}.${m.name.split(' ').at(-1)!.toLowerCase()}@${DEMO_DOMAIN}`
+    const email = mentorEmail(m)
     const id = await ensureAuthUser(db, email, password)
     must(
       await db.from('users').upsert(
@@ -108,7 +183,7 @@ async function main() {
     )
     must(
       await db.from('mentor_profiles').upsert(
-        { user_id: id, full_name: m.name, official_email: email, phone: `+91 98450 ${String(10000 + i * 1111).slice(0, 5)}`, designation: m.designation, faculty_id: `FAC-CS-${String(101 + i)}`, expertise: m.expertise, capacity: 12 },
+        { user_id: id, full_name: m.name, official_email: email, phone: `+91 98450 ${String(10000 + i * 1111).slice(0, 5)}`, designation: m.designation, faculty_id: `FAC-${usnCode}-${String(101 + i)}`, expertise: m.expertise, capacity: 12 },
         { onConflict: 'user_id' },
       ),
       'mentor profile',
@@ -120,11 +195,11 @@ async function main() {
   const currentStart = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
   const demoLogins: string[] = []
 
-  for (let i = 0; i < 60; i++) {
-    const first = FIRST[i % FIRST.length]!
-    const last = LAST[(i * 7) % LAST.length]!
-    const name = `${first} ${last}`
-    const email = `${first.toLowerCase()}.${last.toLowerCase()}${i}@${DEMO_DOMAIN}`
+  for (let i = 0; i < studentCount; i++) {
+    const firstName = FIRST[(i + index * 11) % FIRST.length]!
+    const last = LAST[(i * 7 + index * 5) % LAST.length]!
+    const name = `${firstName} ${last}`
+    const email = `${firstName.toLowerCase()}.${last.toLowerCase()}${i}${tag}@${DEMO_DOMAIN}`
     const currentSemester = 3 + (i % 5) // 3..7
     const admission = currentStart - Math.floor((currentSemester - 1) / 2)
     const archetype = ARCHETYPES[i % ARCHETYPES.length]!
@@ -138,7 +213,7 @@ async function main() {
       ),
       'mentee user',
     )
-    const usn = `1MT${String(admission).slice(2)}CS${String(i + 1).padStart(3, '0')}`
+    const usn = first && dept.code === 'CSE' ? `1MT${String(admission).slice(2)}CS${String(i + 1).padStart(3, '0')}` : `NNM${String(admission).slice(2)}${usnCode}${String(i + 1).padStart(3, '0')}`
     must(
       await db.from('student_profiles').upsert(
         {
@@ -268,8 +343,8 @@ async function main() {
         next.setHours(15, 30, 0, 0)
         must(
           await db.from('mentoring_sessions').insert([
-            { mentor_id: mentor, student_id: id, scheduled_at: past.toISOString(), duration_min: 30, mode: 'IN_PERSON', location_or_link: 'Cabin 3, CSE block', agenda: 'Mid-semester review', summary: 'Reviewed MSE results and set a revision plan for weaker subjects.', action_items: [{ title: 'Share revision timetable', due_date: null }], status: 'COMPLETED', completed_at: past.toISOString(), next_follow_up_date: next.toISOString().slice(0, 10) },
-            { mentor_id: mentor, student_id: id, scheduled_at: next.toISOString(), duration_min: 30, mode: i % 2 ? 'ONLINE' : 'IN_PERSON', location_or_link: i % 2 ? 'https://meet.google.com/abc-defg-hij' : 'Cabin 3, CSE block', agenda: 'Progress check on goals and SEE preparation', action_items: [], status: 'SCHEDULED' },
+            { mentor_id: mentor, student_id: id, scheduled_at: past.toISOString(), duration_min: 30, mode: 'IN_PERSON', location_or_link: `Cabin 3, ${dept.code} block`, agenda: 'Mid-semester review', summary: 'Reviewed MSE results and set a revision plan for weaker subjects.', action_items: [{ title: 'Share revision timetable', due_date: null }], status: 'COMPLETED', completed_at: past.toISOString(), next_follow_up_date: next.toISOString().slice(0, 10) },
+            { mentor_id: mentor, student_id: id, scheduled_at: next.toISOString(), duration_min: 30, mode: i % 2 ? 'ONLINE' : 'IN_PERSON', location_or_link: i % 2 ? 'https://meet.google.com/abc-defg-hij' : `Cabin 3, ${dept.code} block`, agenda: 'Progress check on goals and SEE preparation', action_items: [], status: 'SCHEDULED' },
           ]),
           'sessions',
         )
@@ -283,19 +358,26 @@ async function main() {
     if (count) continue
     must(
       await db.from('learning_resources').insert([
-        { mentor_id: mentor, title: 'Previous-year question papers (Sem 3–5)', instructions: 'Attempt at least two papers under timed conditions before the SEE. Bring doubts to our next session.', external_url: 'https://vtu.ac.in/', subject_id: subjectIds.get('CS302')!.id },
-        { mentor_id: mentor, title: 'Algorithm visualizations', instructions: 'Use these visualizations while revising sorting and graph algorithms.', external_url: 'https://visualgo.net/en', subject_id: subjectIds.get('CS402')!.id },
+        { mentor_id: mentor, title: 'Previous-year question papers (Sem 3–5)', instructions: 'Attempt at least two papers under timed conditions before the SEE. Bring doubts to our next session.', external_url: 'https://vtu.ac.in/', subject_id: subjectIds.get(curriculumCode('302'))?.id },
+        { mentor_id: mentor, title: 'Algorithm visualizations', instructions: 'Use these visualizations while revising sorting and graph algorithms.', external_url: 'https://visualgo.net/en', subject_id: subjectIds.get(curriculumCode('402'))?.id },
         { mentor_id: mentor, title: i % 2 ? 'Resume & internship checklist' : 'How to read research papers', instructions: 'Read this before our career guidance session.', external_url: 'https://www.ycombinator.com/library' },
       ]),
       'resources',
     )
   }
 
-  writeFileSync(
-    'DEMO.md',
-    `# Mentora demo accounts\n\nAll demo accounts use the password in \`DEMO_PASSWORD\` (see \`.env.local\`). The HOD uses \`SEED_HOD_PASSWORD\`.\n\n## HOD\n- ${env('SEED_HOD_EMAIL')}\n\n## Mentors\n${MENTORS.map((m) => `- ${m.name}: ${m.name.replace(/^(Dr|Prof)\.\s*/, '').split(' ')[0]!.toLowerCase()}.${m.name.split(' ').at(-1)!.toLowerCase()}@${DEMO_DOMAIN}`).join('\n')}\n\n## Mentees (first 12 of 60)\n\`\`\`\n${demoLogins.join('\n')}\n\`\`\`\n`,
-  )
-  console.log('✔ Demo data ready. Logins written to DEMO.md')
+  console.log(`✔ ${dept.code}: demo data ready (${studentCount} students, 6 mentors).`)
+  return branchSummary(dept.code, hod, MENTORS.map(mentorEmail), demoLogins)
+}
+
+function branchSummary(code: string, hod: { email: string; demo: boolean }, mentors: string[], students: string[]) {
+  return [
+    `## ${code}`,
+    `- HOD: ${hod.email}${hod.demo ? '' : ' (existing account, own password)'}`,
+    `- Mentors: ${mentors.join(', ')}`,
+    ...(students.length ? ['- Students (first 12):', '```', ...students, '```'] : []),
+    '',
+  ].join('\n')
 }
 
 main().catch((e) => {
