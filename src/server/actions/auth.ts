@@ -1,5 +1,6 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/server/supabase'
 import { serverEnv } from '@/server/env'
@@ -7,6 +8,13 @@ import { AppError, handle } from '@/server/handle'
 import { rateLimit } from '@/server/rate-limit'
 import { forgotSchema, loginSchema, setPasswordSchema, signupSchema } from '@/lib/validators'
 import { ROLE_HOME } from '@/lib/roles'
+
+/** View filters belong to a person, not the browser: every sign-in starts on all semesters / all branches. */
+async function clearViewFilters() {
+  const jar = await cookies()
+  jar.delete('m_sem')
+  jar.delete('m_branch')
+}
 
 const GENERIC_LOGIN = 'That email and password combination didn’t work. Check both and try again.'
 
@@ -22,6 +30,7 @@ export async function signIn(input: unknown) {
       if (error?.status === 429) throw new AppError('RATE_LIMITED', 'Too many attempts. Please wait a few minutes and try again.')
       throw new AppError('UNAUTHENTICATED', GENERIC_LOGIN)
     }
+    await clearViewFilters()
     // Role + status come from the database, never from the auth payload.
     const { data: u } = await db.from('users').select('role, status, onboarding_completed_at').eq('id', data.user.id).maybeSingle()
     if (!u) {

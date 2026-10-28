@@ -119,5 +119,8 @@ export async function signOut(scope: 'local' | 'global' = 'local') {
   await db.auth.signOut({ scope })
   const jar = await cookies()
   jar.delete('m_lowbw')
+  // The semester / branch filters were this person's choice; the next person starts fresh.
+  jar.delete('m_sem')
+  jar.delete('m_branch')
   redirect('/login?signedOut=1')
 }
