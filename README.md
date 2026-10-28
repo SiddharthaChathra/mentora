@@ -37,7 +37,8 @@
   <a href="#-quick-start"><b>Quick Start</b></a> ·
   <a href="#%EF%B8%8F-security-model"><b>Security</b></a> ·
   <a href="#-testing"><b>Testing</b></a> ·
-  <a href="#-documentation"><b>Docs</b></a>
+  <a href="#-documentation"><b>Docs</b></a> ·
+  <a href="#-appendix-a-build-prompt"><b>Build prompt</b></a>
 </p>
 
 </div>
@@ -414,6 +415,335 @@ Deploying your own copy: see [DEPLOY.md](DEPLOY.md).
 | [DESIGN.md](DESIGN.md) | The "Sky Dashboard" design system: tokens, type, components, contrast |
 | [FEATURES.md](FEATURES.md) | Feature checklist with verification status |
 | [DEPLOY.md](DEPLOY.md) | Deploying to Supabase Cloud and Vercel |
+
+<br>
+
+## 📎 Appendix A: Build Prompt
+
+Mentora was built with AI coding agents (Google Antigravity, then Claude Code) working from my prompts. Over the project I wrote many prompts: a long first build prompt with nine phases and a feature checklist, a redesign prompt for the "Sky Dashboard" look, a multi-branch prompt that turned it into a college-wide system with a Principal role, and a series of follow-up requests. The prompt below combines all of them into one, written so that it describes the finished project.
+
+<details>
+<summary><b>Show the full build prompt</b></summary>
+
+```text
+# MISSION
+Build "Mentora", a production-quality Smart Mentor–Mentee Management System for a whole
+engineering college with many branches (CSE, ISE, AIML, MCA, ECE, EEE, ME, CV, AIDS, …) and
+four roles: MENTEE (student), MENTOR (faculty), HOD (Head of one branch, who administers that
+branch) and PRINCIPAL (college-wide oversight). Every student, mentor, subject and academic
+record belongs to exactly one branch. Treat the UI/UX as a core requirement, not a finishing
+step. Build it fully, test it as a real user of every role, deploy it at no cost, and document it.
+
+# 1. NON-NEGOTIABLE RULES
+1. Every button and page works with real backend data. No mock dashboards, hard-coded arrays,
+   placeholder text or TODOs in shipped screens.
+2. Access control is enforced in the backend: PostgreSQL Row Level Security on every table plus
+   server-side guard functions. Hiding something in the UI is never the only protection.
+3. Scopes: MENTEE = self. MENTOR = active assigned mentees (always in the mentor's branch).
+   HOD = only the one branch they currently head. PRINCIPAL = every branch, read-only on
+   student data. This holds on every surface: pages, server actions, API routes, RPCs, file
+   downloads, signed links, searches, counts, exports, imports, notes, analytics and PDFs.
+4. Mentors see only their ACTIVE assigned mentees. Reassigning a student, changing an HOD or
+   moving a student to another branch removes the old access on the very next request.
+5. A role or branch is never read from anything the client can edit (URL, local storage,
+   cookies, user metadata, request body). A ?branch= parameter may only NARROW what the server
+   already allows. Role changes and HOD appointments go through audited flows.
+6. Out-of-scope records look like "not found" (404) — never a 403 with details — and never
+   leak through counts, totals, search suggestions, error messages or notification text.
+7. Students can never change their mentor, role, branch, verified records or anyone else's data.
+8. Edits to verified academic records go through a correction request that a mentor or HOD
+   approves. Never overwrite silently.
+9. Important changes (marks, assignments, roles, mentoring records, settings, HOD appointments,
+   branch transfers, branch changes, downloads) are written to an append-only audit log with
+   actor, action, before, after, time and branch.
+10. SGPA, CGPA, percentages and grades are calculated only when the grading scheme and every
+    required input exist. Otherwise show "Not calculated" with the reason. Never label a
+    student weak when data is missing or not comparable.
+11. Charts, automated insights, risk flags and AI text are website-only and never appear in PDFs.
+12. Students never see other students' data, rankings or their own risk flags. Branches may be
+    compared with each other; individual students are never ranked for anyone.
+13. The Principal never sees PRIVATE_MENTOR notes and cannot edit marks, verify or finalize
+    records, write mentoring notes or change mentor assignments.
+14. Collect only the personal data mentoring needs; DOB, gender and address are optional.
+
+# 2. STACK
+Next.js (App Router, Server Components, Server Actions, Route Handlers, proxy.ts) with
+TypeScript strict; Tailwind CSS v4 with design tokens; Radix UI primitives; Motion for
+animation; Recharts plus custom SVG charts; dnd kit; TanStack Query (client interactivity
+only); React Hook Form + Zod; Sonner toasts; date-fns; Lucide icons; cmdk command palette.
+Supabase for PostgreSQL, Auth, private Storage and Realtime; SQL migrations in
+/supabase/migrations with generated types. @react-pdf/renderer (server-side) and pdf-lib for
+PDFs; PapaParse (CSV) and ExcelJS (XLSX); Sharp and react-easy-crop for photos; Resend for
+optional email; Vercel Cron for scheduled jobs; optional Gemini AI behind a feature flag.
+Tests: Vitest (unit), Vitest against a local Supabase (RLS), Playwright (end-to-end).
+Hosting: Vercel + Supabase.
+
+# 3. ENGINEERING RULES
+- Validate every input on the server with Zod. One response shape: { ok, data } or
+  { ok: false, error: { code, message, fieldErrors } }, through one handle() wrapper.
+- Use database functions (transactions) for multi-row writes: assignments, imports,
+  verification, correction approval, HOD appointments and branch transfers.
+- SQL helper functions are SECURITY DEFINER, STABLE, search_path = '' and called in policies
+  as (select app.helper()) so they run once per query, not once per row.
+- One server-side scope function (getScope: SELF / MENTOR / BRANCH / COLLEGE / NONE) read fresh
+  from the database on every request, plus assertCanViewStudent, assertCanReadDepartment,
+  assertCanManageDepartment and assertPrincipal guards.
+- The service-role key is used only in server admin code AFTER a scope check, and only for
+  the branch the actor may act on. A unit test proves no admin call happens without one.
+- Files live in private buckets; check type, extension and size on the server; serve them
+  through signed links that last at most 60 seconds, issued only after an access check.
+- Server-rendered clock times use the college time zone (servers run in UTC).
+- No secrets in code, logs, commits or chat. Keep .env.example with names only.
+
+# 4. BRANCHES, APPOINTMENTS AND TRANSFERS (data model)
+- departments = branches: code, name, usn_code (the letters after the year in a USN),
+  display order, status ACTIVE/ARCHIVED. Seeded from config/branches.json. A branch can only
+  be archived when it has no active students or staff.
+- department_heads: appointment history; one active HOD per branch and one branch per HOD;
+  a branch may temporarily have no HOD (the Principal covers it).
+- student_branch_transfers: PENDING -> APPROVED/REJECTED. Approval runs one transaction that
+  moves the student, ends their mentor assignment, re-scopes all their records to the new
+  branch, and notifies the student, both HODs and the old mentor.
+- Mentor and mentee must be in the same branch (database trigger, error MB_CROSS_BRANCH).
+- Every scoped table carries a department_id filled by a trigger from the student or mentor,
+  never from the client, and kept in sync on transfer.
+- Grading scheme and risk thresholds: one college default; an HOD may add a branch override
+  only while the Principal allows "branch-specific grading". Finalized history is never
+  recalculated.
+- Migrating the earlier single-department data: back up first, move it into one named branch
+  (EXISTING_DATA_BRANCH_CODE) with equal row counts, and make the existing HOD its head.
+
+# 5. AUTHENTICATION AND ROLES
+- Email + password sign-in, forgot and reset password, invitation acceptance.
+- After sign-in, the server reads role, status and (for HODs) the active appointment and sends
+  the user to /mentee, /mentor, /hod or /principal, to /setup if the profile is incomplete, to
+  /suspended, or to "Your HOD access has ended" when an HOD's appointment has ended.
+- Students sign up themselves at /signup with their USN email (e.g. nnm23cs001@…): a database
+  trigger always makes them an ACTIVE MENTEE in the branch named by the USN code (cs → CSE).
+  Non-USN emails, unknown branch codes and (when set) other email domains are refused with a
+  clear reason; the Principal can turn self sign-up off.
+- Mentors are invited by their HOD (own branch only); HODs and mentors in any branch can be
+  invited by the Principal, who can appoint an invited HOD as branch head straight away.
+- A Principal following an /hod link lands on the matching /principal page; every other role
+  is redirected away from /principal.
+- Account page: photo, password change, signed-in devices with "sign out everywhere",
+  notification preferences, low-bandwidth mode.
+- Suspended, 403, 404, offline, error and "HOD access ended" pages.
+
+# 6. FIRST-TIME SETUP WIZARD (role-aware)
+- Student: personal details and photo; academic identity (USN, branch shown read-only,
+  program, semester, section, admission year, expected graduation); academic history; skills,
+  interests, career goals, achievements and support areas; review and finish. The mentor is
+  shown read-only.
+- Mentor: name, photo, official email, phone, branch (read-only), designation, faculty ID,
+  expertise.
+- HOD and Principal: short profile.
+- Autosave every change, resume where the user left, list missing required fields, inline
+  validation, a progress indicator and a small celebration at the end.
+
+# 7. STUDENT (MENTEE) FEATURES
+- Overview: CGPA hero card, credit progress, current semester, mentor card, next session,
+  latest feedback, and one data-driven "next step" card.
+- Academic records: semesters with SGPA, credits and status. Per subject: name, code, credits,
+  MSE and SEE with maximum marks, internal assessment components, grade, grade points, result.
+  Marks, percentages, grades, SGPA and CGPA are kept clearly separate.
+- Marks entry grid: subjects filled in from the branch catalogue, Tab and Enter navigation,
+  paste from Excel or Google Sheets, per-row autosave; one subject per screen on phones.
+- Workflow: DRAFT -> SUBMITTED -> VERIFIED (mentor or HOD) -> FINALIZED (HOD). A returned
+  semester goes back to DRAFT with a note. Verified marks are locked; changes need a correction
+  request.
+- Analytics: SGPA trend, MSE vs SEE per subject, credit completion, result summary, filters.
+  Rule-based insights (strengths, needs attention, suggested focus, improved, declined), each
+  with a "Why am I seeing this?" list of evidence. Personal bests only, no rankings.
+- Feedback and improvement plan, resources library with "new" markers, sessions with calendar
+  (.ics) files, an Academic Journey timeline, notifications. The profile shows the branch
+  read-only.
+
+# 8. MENTOR FEATURES
+- Overview: average SGPA, students who need attention (with reasons), pending follow-ups,
+  sessions this week, subject performance with drill-down.
+- My mentees: search, filters (semester, section, risk, follow-ups), saved views as chips.
+- Mentee profile with tabs: overview, academics, analytics and insights, mentoring, resources,
+  sessions, journey, report.
+- Verifications: queue of submitted semesters, bulk verify, return with a note, review
+  correction requests side by side.
+- Recommendations and feedback: kind (recommendation, feedback, goal, action point, strength,
+  improvement area), category, due and review dates, visibility shared or private to the
+  mentor, "include in report", follow-ups and status history.
+- Upload study materials, schedule sessions (in person or online), record summaries and action
+  items, cohort analytics, PDF reports per mentee, and an optional AI summary that the mentor
+  must review and approve before the student sees it.
+
+# 9. HOD FEATURES (own branch only)
+- The header shows a fixed branch chip (e.g. "ISE · Information Science and Engineering");
+  there is no branch filter anywhere on HOD screens.
+- Branch overview: coverage, mentor workload, risk overview, section SGPA comparison, mentoring
+  constellation, students with missing records or incomplete profiles; every number opens the
+  students behind it.
+- Student and mentor directories with search, filters, sorting and saved views; mentor detail
+  with capacity and activity.
+- Assignment board: drag students between mentor columns (keyboard accessible), bulk reassign,
+  confirmation, Undo, and a history of every change — mentors and students of the same branch only.
+- Interventions: flagged students with reasons, follow-up requests to mentors.
+- Users: invite, resend, change role between Mentee and Mentor, suspend and reactivate — for
+  their own branch only; HODs and the Principal are managed by the Principal.
+- Student profile: "Request branch transfer" (target branch + reason) for the Principal.
+- Settings: sections and subjects catalogue; grading scheme and risk thresholds only as a
+  branch override while the Principal allows it (otherwise shown read-only with the reason).
+- Bulk import of students, mentors, subjects and results from CSV/XLSX into their own branch:
+  templates, preview with per-row errors (rows naming another branch are rejected), duplicate
+  detection, skip or update, confirmation, downloadable error report.
+- Exports, branch analytics, and a searchable audit log of their own branch with before/after.
+
+# 10. PRINCIPAL FEATURES (/principal, whole college, read-only on student data)
+- Shell: same icon rail and floating header as the other roles, plus a branch switcher pill
+  ("All branches ▾" then each branch) next to the semester switcher. The choice lives in the
+  URL (?branch=CSE), is remembered per user, and only narrows what the server allows. On
+  phones it becomes a bottom sheet.
+- College overview: hero card "College mentoring coverage" with "See branches"; tiles for
+  branches (and how many have no active HOD), students, mentors, unassigned students, flagged
+  students and pending transfers; a branch comparison chart that toggles average SGPA
+  (previous vs latest semester), mentoring coverage and missing records — click a bar to open
+  the branch; a "Students by branch" donut; a branch health table (branch, HOD or "No HOD" /
+  "Suspended", students, mentors, coverage bar, flagged, incomplete profiles, last activity);
+  and a "Needs your attention" card listing branches without an active HOD, pending
+  transfers and branches below 80% coverage. Choosing one branch shows that branch's HOD
+  overview read-only with a "Viewing as Principal · read-only" banner.
+- Branches: cards with code, USN code, name, HOD and coverage ring; create, rename, reorder
+  and archive (archive refused while the branch has active people); open a branch to see its
+  read-only overview.
+- Students by branch: collapsible branch sections (header: name, HOD, student count, coverage
+  bar, flagged count; branches with students start open) with the first rows and "See all in
+  <branch>"; a toggle to one flat table with a Branch column and branch chips. Search by name
+  or USN; filters for academic year, mentor assigned/unassigned, risk and profile completion;
+  sort by name, branch or semester (never by rank or CGPA); saved views. Rows open the
+  existing student profile read-only: no Recommend, Schedule, Verify or assignment actions,
+  private mentor notes hidden, PDF download allowed and audited.
+- Mentors by branch: workload bars, 30-day activity, flagged mentees and last activity;
+  read-only, with a per-branch preview and "See all".
+- Analytics: college trends by semester with one line per branch, SGPA distribution, pass
+  rate, subjects needing support, plus per-branch bars (average SGPA, pass rate, mentoring
+  activity, coverage). Every chart has "View as table".
+- Interventions: flagged students across branches, grouped by branch, reasons always shown,
+  read-only, with a "Notify HOD" button that sends the branch HOD an in-app notification.
+- HODs: one card per branch with the current HOD (and a warning if their account is
+  suspended), Appoint / Change HOD (pick a faculty member of that branch, or invite someone new
+  as HOD), End appointment, and the full appointment history. The old HOD loses access
+  immediately; both people are notified; everything is audited. A mentor appointed HOD hands
+  back their mentees so the new HOD can reassign them.
+- Transfers: pending requests from HODs with Approve / Reject and a note, a "Move a student"
+  action (search by name or USN, target branch, reason), and the decided history.
+- Users: every account in the college or one branch, with a Branch column; invite
+  HOD / MENTOR / MENTEE into any branch (optionally appointing an HOD at once); change roles
+  between Mentee and Mentor; suspend or reactivate; the last active Principal can never be
+  removed.
+- Imports: same wizard as the HOD, but the Principal chooses the target branch first.
+- Exports: college-wide or one branch (CSV, XLSX and a PDF summary grouped by branch).
+- Settings: college grading scheme and risk rules; academic years; the "Allow branch-specific
+  grading" switch; student self sign-up on/off; optional required student email domain;
+  profile fields and features.
+- Audit history: every entry in the college, filterable by branch, entity, action and date.
+- Mobile: bottom navigation (Overview · Students · Branches · Analytics) and a "+" sheet with
+  Appoint an HOD, Move a student and Export.
+
+# 11. RISK FLAGS (mentor, HOD and Principal only; each with its reason)
+Failed subject in the latest semester; SGPA drop of 0.5 or more (or MSE to SEE drops in two or
+more subjects); missing results for the last semester; two or more assessments below 40%;
+profile incomplete after 14 days. Thresholds come from the college default or, when allowed,
+the branch override.
+
+# 12. PDF REPORT
+Only the student's active mentor, their branch HOD or the Principal can download it, and every
+download is audited. Header "<College> · <Branch>". Sections: student information (with photo),
+academic summary, semester-wise performance, and mentoring records marked "include in report".
+A4, branded header and footer, "Page X of Y", tables that never split a row badly. No charts,
+insights, risk flags or AI text.
+
+# 13. NOTIFICATIONS AND REMINDERS
+Realtime bell with unread count; notification centre grouped Today / This week / Earlier with
+Mark done, Open and Snooze. New events: HOD appointed or ended, transfer requested or decided,
+student moved in or out, "Principal asked you to review flagged students". A daily Vercel Cron
+job (protected by a secret) reminds mentors of follow-ups and students of incomplete profiles,
+missing results and drafts; email via Resend or the Supabase SMTP sender when configured.
+
+# 14. DESIGN: "SKY DASHBOARD"
+Match the two reference dashboards I provided: a pale blue canvas, floating white rounded
+cards, a slim left icon rail, one glossy blue gradient hero card per page, pastel stat tiles
+with corner icon badges, smooth line charts with soft fill, rounded bars, donut charts with a
+centre total, and roomy tables with progress bars. Use only design tokens. Every data view
+has a skeleton, a designed empty state, an error state with retry, and success feedback.
+UX additions: a global semester switcher that filters every page (with a "Filtered to Semester
+N · Show all" chip), a branch switcher for the Principal, a Ctrl+K command palette with recent
+searches (scoped like everything else), a next-step card, drill-down from every number, delta
+chips that say what they compare, Undo on quick actions, a replayable first-visit tour for
+every role (including the Principal), keyboard shortcuts, "?" help on terms like SGPA and MSE,
+and friendly copy that says how to fix an error.
+Mobile is designed separately: bottom navigation, a "+" quick-action button, cards instead of
+wide tables, no horizontal scrolling. Accessibility: WCAG 2.2 AA contrast, visible focus,
+full keyboard use, labels, reduced motion, and a "View as table" option on every chart.
+
+# 15. PERFORMANCE AT COLLEGE SIZE
+Load a test college of 8 branches × 400 students × 4 semesters. Pages must stay under 2.5 s
+(p95) on the production build: read policies use once-per-query helpers instead of per-row
+function calls, rosters load in parallel with a slim select, and the Principal's
+college-wide pages use short-lived per-session summaries that are cleared on every write.
+
+# 16. HOW TO WORK (the loop)
+For every slice: plan -> build -> run typecheck, lint, tests and build -> open the screens at
+390, 834 and 1440 px -> score them against a 10-point UI rubric -> fix anything below 9 ->
+repeat -> tick FEATURES.md, update PROGRESS.md and commit. Keep DESIGN.md, ARCHITECTURE.md
+(including the role × permission matrix), FEATURES.md, PROGRESS.md and E2E_REPORT.md up to
+date. If something needs me (an account, a key, a dashboard setting, a production change),
+stop and give click-by-click instructions.
+
+# 17. TESTING
+Unit tests for the grading, insights and risk engines (including missing data), the scope
+helpers, and the admin paths (no service-role call without a valid scope). Database access
+tests that sign in as each role. A multi-branch scoping matrix signs in as the Principal, two
+branch HODs, a former HOD, a suspended HOD, mentors and students of different branches, and
+anonymous, and checks every student-data table for every branch, cross-branch write attempts,
+storage files, the Principal never seeing private notes, and revocation after an HOD change
+and a branch transfer. A policy lint test fails the build if any policy trusts is_hod()
+without a branch condition or any table has RLS off. End-to-end tests for the main journeys
+plus attack tests (another branch's profile, PDF, file, export and search must be 404 or
+empty, with a leak scan of every response), the HOD-revocation and transfer journeys, and a
+crawl of every page for all four roles at desktop and phone widths that fails on errors,
+error screens or horizontal overflow. Then test every page and button by hand as a real user
+of each role, fix everything that fails, and keep going until two complete runs in a row are
+green.
+
+# 18. DEMO DATA, DEPLOYMENT AND HANDOVER
+- Base seed: every branch from config/branches.json with sections, the college grading scheme
+  and risk rules, the first HOD (appointed to the existing branch) and the Principal.
+- Demo seed: several mentors and about 60 students in one branch with realistic subjects,
+  varied results, feedback, goals, resources, sessions and risk cases. A multi-branch test
+  fixture adds more branches and every kind of account for the tests.
+- Deploy at no cost: a Supabase project, a public GitHub repository and Vercel with
+  auto-deploy from main; set environment variables; back up production before migrating it;
+  run a smoke test against the live site as every role.
+- Documentation: README written as a showcase of the live website with screenshots, plus
+  DEPLOY.md, USER_GUIDE.md, ARCHITECTURE.md, E2E_REPORT.md and a handover file.
+```
+
+</details>
+
+<br>
+
+## 📎 Appendix B: Running the Project
+
+```bash
+pnpm install
+pnpm db:start        # local Supabase in Docker
+pnpm db:reset        # apply all 19 migrations (001–010 single department, 011–019 multi-branch)
+pnpm db:seed         # branches from config/branches.json, grading scheme, first HOD, Principal
+pnpm db:seed:demo    # optional demo students and mentors
+pnpm exec tsx tests/fixtures/multibranch.seed.ts   # optional: extra branches + accounts for the multi-branch tests
+pnpm dev             # http://localhost:3000
+
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:rls && pnpm test:e2e
+```
+
+Before seeding, copy `.env.example` to `.env.local` and fill in the local Supabase keys, `SEED_HOD_*`, `SEED_PRINCIPAL_*`, `DEMO_PASSWORD` and `E2E_PASSWORD`, and list your branches (`code`, `name`, `usn_code`) in `config/branches.json`.
 
 <br>
 
