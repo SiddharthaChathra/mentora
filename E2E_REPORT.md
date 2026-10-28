@@ -86,7 +86,7 @@ Every pre-existing suite re-run on the final code: unit, RLS, smoke journeys, an
 | RLS (matrix, policy lint, policies) | 40/40 ✅ | 40/40 ✅ |
 | RLS scoping specs again (flake check) | 26/26 ✅ | 26/26 ✅ |
 | e2e smoke + crawl + multibranch | 21/21 ✅ | 21/21 ✅ |
-| e2e scoping/revocation  | 12/12 ✅ | 12/12 ✅ |
+| e2e scoping/revocation, `--repeat-each=3` | 12/12 ✅ | 12/12 ✅ |
 Production build ✅ (built with local env; see Performance).
 
 ## Not done / honest gaps
