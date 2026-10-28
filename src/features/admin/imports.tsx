@@ -16,7 +16,7 @@ import { commitImport, discardImport, previewImport, type PreviewResult } from '
 const KINDS = [
   { kind: 'students', label: 'Students', icon: Users, desc: 'Create student accounts with USN, semester and section.' },
   { kind: 'mentors', label: 'Mentors', icon: LifeBuoy, desc: 'Create faculty accounts with designation and capacity.' },
-  { kind: 'subjects', label: 'Subjects', icon: GraduationCap, desc: 'Department subjects with credits and max marks.' },
+  { kind: 'subjects', label: 'Subjects', icon: GraduationCap, desc: 'Branch subjects with credits and max marks.' },
   { kind: 'results', label: 'Results', icon: ListChecks, desc: 'Official marks; imported as HOD-verified semesters.' },
 ] as const
 

@@ -9,7 +9,7 @@ export default function SuspendedPage() {
   return (
     <SystemPage
       title="Your account is suspended"
-      description="You can’t access Mentora right now. Please contact your Head of Department to restore access."
+      description="You can’t access Mentora right now. Please contact your Head of Department or the Principal to restore access."
       illustration="locked"
       actions={
         <form action={async () => { 'use server'; await signOut() }}>

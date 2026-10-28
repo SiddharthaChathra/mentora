@@ -51,6 +51,8 @@ export function fromDbError(e: PgLike): AppError {
 
 function conflictMessage(e: PgLike) {
   const m = `${e.message} ${e.details ?? ''}`
+  if (m.includes('departments_usn_code')) return 'Another branch (possibly an archived one) already uses that USN code.'
+  if (m.includes('departments_code')) return 'A branch with that code already exists.'
   if (m.includes('usn')) return 'That USN is already registered.'
   if (m.includes('faculty_id')) return 'That faculty ID is already registered.'
   if (m.includes('subjects_dept_code')) return 'A subject with this code already exists.'

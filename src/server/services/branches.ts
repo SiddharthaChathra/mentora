@@ -16,6 +16,8 @@ export type Branch = {
   headId: string | null
   headName: string | null
   headSince: string | null
+  /** The appointed head's account is suspended: the branch effectively has no working HOD. */
+  headSuspended: boolean
 }
 
 /** Every branch with its current HOD (RLS: any active account may read the branch list). */
@@ -25,8 +27,11 @@ export const listBranches = cache(async (db: DB, opts: { includeArchived?: boole
     db.from('department_heads').select('department_id, user_id, started_at').is('ended_at', null),
   ])
   const headIds = (heads ?? []).map((h) => h.user_id)
-  const { data: names } = headIds.length ? await db.from('hod_profiles').select('user_id, full_name').in('user_id', headIds) : { data: [] }
+  const [{ data: names }, { data: accounts }] = headIds.length
+    ? await Promise.all([db.from('hod_profiles').select('user_id, full_name').in('user_id', headIds), db.from('users').select('id, status').in('id', headIds)])
+    : [{ data: [] }, { data: [] }]
   const nameBy = new Map((names ?? []).map((n) => [n.user_id, n.full_name]))
+  const suspended = new Set((accounts ?? []).filter((a) => a.status === 'SUSPENDED').map((a) => a.id))
   const headBy = new Map((heads ?? []).map((h) => [h.department_id, h]))
   return (depts ?? [])
     .filter((d) => opts.includeArchived || d.status === 'ACTIVE')
@@ -42,6 +47,7 @@ export const listBranches = cache(async (db: DB, opts: { includeArchived?: boole
         headId: h?.user_id ?? null,
         headName: h ? (nameBy.get(h.user_id) ?? null) : null,
         headSince: h?.started_at ?? null,
+        headSuspended: !!h && suspended.has(h.user_id),
       }
     })
 })

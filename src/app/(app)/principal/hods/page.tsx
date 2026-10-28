@@ -26,7 +26,7 @@ export default async function PrincipalHods({ searchParams }: { searchParams: Pr
     id: b.id,
     code: b.code,
     name: b.name,
-    head: b.headId ? { id: b.headId, name: b.headName, since: b.headSince!, hasAvatar: !!prof.get(b.headId)?.avatar_path } : null,
+    head: b.headId ? { id: b.headId, name: b.headName, since: b.headSince!, hasAvatar: !!prof.get(b.headId)?.avatar_path, suspended: b.headSuspended } : null,
     candidates: (staff ?? [])
       .filter((s) => s.department_id === b.id && s.id !== b.headId)
       .map((s) => ({ id: s.id, name: prof.get(s.id)?.full_name ?? null, email: s.email, role: s.role }))

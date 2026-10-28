@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams
   const notice = sp.error ? NOTICES[sp.error] : sp.signedOut ? NOTICES.signedOut : undefined
   return (
-    <AuthShell title="Welcome" accent="back" subtitle="Sign in with the email your department registered for you.">
+    <AuthShell title="Welcome" accent="back" subtitle="Sign in with the email your college registered for you.">
       <LoginForm next={sp.next} notice={notice} />
     </AuthShell>
   )

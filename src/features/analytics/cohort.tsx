@@ -78,7 +78,7 @@ export function CohortAnalytics({ roster, extra, groupOf }: { roster: RosterEntr
         <PastelStatTile tile="rose" label="Flagged for attention" value={roster.filter((r) => r.risk !== 'none').length} icon={<ShieldAlert />} helper={`${roster.filter((r) => r.risk === 'high').length} high priority`} />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-        <DepartmentTrend data={trend} series={series} />
+        <DepartmentTrend data={trend} series={series} groupLabel={groupOf ? 'branch' : 'section'} />
         <Histogram title="Latest SGPA distribution" description="Students by their most recent semester SGPA" bins={bins} empty="No SGPA data yet." />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">

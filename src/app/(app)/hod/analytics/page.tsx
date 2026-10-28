@@ -9,7 +9,7 @@ import { BarList } from '@/components/charts/bars'
 import { CohortAnalytics } from '@/features/analytics/cohort'
 import { DirectoryToolbar } from '@/features/roster/directory-toolbar'
 
-export const metadata: Metadata = { title: 'Department analytics' }
+export const metadata: Metadata = { title: 'Branch analytics' }
 
 export default async function HodAnalyticsPage({ searchParams }: { searchParams: Promise<{ section?: string; semester?: string; year?: string }> }) {
   const actor = await requireRole('HOD')
@@ -25,7 +25,7 @@ export default async function HodAnalyticsPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <PageHeader title="Department" accent="analytics" description="Performance trends, pass rates, SGPA distribution and mentoring activity across your department." />
+      <PageHeader title="Branch" accent="analytics" description="Performance trends, pass rates, SGPA distribution and mentoring activity across your branch." />
       <ScopeChip scope={semScope} />
       <DirectoryToolbar
         storageKey="m_hod_analytics_filters"

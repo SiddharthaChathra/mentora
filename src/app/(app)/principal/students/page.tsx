@@ -103,14 +103,14 @@ export default async function PrincipalStudents({ searchParams }: { searchParams
             const coverage = all.length ? Math.round((all.filter((r) => r.mentorId).length / all.length) * 100) : null
             const flagged = all.filter((r) => r.risk !== 'none').length
             return (
-              <details key={b.id} open={shown.length === 1 || sp.open === b.code || shown.length <= 3} className="group rounded-[24px] bg-surface shadow-2">
+              <details key={b.id} open={shown.length === 1 || sp.open === b.code || list.length > 0} className="group rounded-[24px] bg-surface shadow-2">
                 <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 p-5 [&::-webkit-details-marker]:hidden">
                   <ChevronDown className="size-5 text-ink-500 transition-transform group-open:rotate-180" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2 font-semibold text-ink-900">
                       <Pill tone="brand">{b.code}</Pill> <span className="truncate">{b.name}</span>
                     </span>
-                    <span className="mt-0.5 block text-xs text-ink-500">{b.headName ? `HOD ${b.headName}` : 'No HOD appointed'}</span>
+                    <span className="mt-0.5 block text-xs text-ink-500">{b.headName ? `HOD ${b.headName}${b.headSuspended ? ' (suspended)' : ''}` : 'No HOD appointed'}</span>
                   </span>
                   <span className="num text-sm text-ink-700">
                     <span className="font-semibold text-ink-900">{list.length}</span>

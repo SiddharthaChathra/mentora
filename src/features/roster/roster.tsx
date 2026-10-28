@@ -48,7 +48,7 @@ export function RiskChip({ flags, compact }: { flags: RiskFlag[]; compact?: bool
             </li>
           ))}
         </ul>
-        <p className="mt-3 border-t border-line pt-2.5 text-xs text-ink-500">Flags are explanations based on recorded data and your department’s thresholds — never a score.</p>
+        <p className="mt-3 border-t border-line pt-2.5 text-xs text-ink-500">Flags are explanations based on recorded data and your college’s thresholds — never a score.</p>
       </PopoverContent>
     </Popover>
   )

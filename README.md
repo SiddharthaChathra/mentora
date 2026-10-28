@@ -29,6 +29,7 @@
 
 <p>
   <a href="#-why-mentora"><b>Why</b></a> ·
+  <a href="#-one-site-for-the-whole-college"><b>Multi-branch</b></a> ·
   <a href="#-screenshots"><b>Screenshots</b></a> ·
   <a href="#-try-it"><b>Try it</b></a> ·
   <a href="#%EF%B8%8F-architecture"><b>Architecture</b></a> ·
@@ -51,11 +52,11 @@
 
 <br>
 
-Mentora gives an engineering department one place for mentoring. **Students** keep their semester records — subjects, mid-semester and semester-end marks, grades — and see their SGPA, CGPA and progress. **Mentors** verify those records, set goals with concrete steps, schedule sessions and share study material with the students assigned to them. The **HOD** sees coverage, mentor workload and who needs help, and manages assignments, users and grading rules.
+Mentora gives a whole engineering college one place for mentoring, organised by **branch** (CSE, ISE, ECE, …). **Students** keep their semester records — subjects, mid-semester and semester-end marks, grades — and see their SGPA, CGPA and progress. **Mentors** verify those records, set goals with concrete steps, schedule sessions and share study material with the students assigned to them. Each **HOD** runs their own branch: coverage, mentor workload, who needs help, assignments, users and branch settings. The **Principal** sees every branch side by side, appoints HODs and approves branch transfers — read-only on student records.
 
 **Every number is computed from verified data, and every flag explains itself.** If an SGPA can't be calculated yet, Mentora says why instead of guessing. Risk indicators name the rule and the marks behind them. Students never see other students' data or rankings.
 
-> **The live app requires an account.** Students can [sign up free](https://mentora-zeta-six.vercel.app/signup) and become students only. Mentor and HOD accounts are created by invitation from the department, so no one can grant themselves elevated access.
+> **The live app requires an account.** Students can [sign up free](https://mentora-zeta-six.vercel.app/signup) with their **USN email** (e.g. `nnm23cs001@…`) and become students in the branch named by their USN. Mentor, HOD and Principal accounts are created by invitation, so no one can grant themselves elevated access.
 
 <br>
 
@@ -69,7 +70,7 @@ Mentora gives an engineering department one place for mentoring. **Students** ke
 Semester-wise marks with a configurable 10-point grading engine. Students submit, mentors verify, records lock; corrections go through an audited request.
 
 **⌨️ Spreadsheet-Fast Marks Entry**
-Subjects auto-filled from the department catalogue. Tab / Enter navigation, paste a block straight from Excel or Sheets, per-row autosave.
+Subjects auto-filled from the branch catalogue. Tab / Enter navigation, paste a block straight from Excel or Sheets, per-row autosave.
 
 **🎯 Goals With Real Steps**
 Mentors set goals and action points with checklists and due dates; students tick steps, reflect and update status — with Undo.
@@ -80,8 +81,11 @@ Declining SGPA, failed subjects, repeated low marks, incomplete profiles — eac
 </td>
 <td width="50%" valign="top">
 
-**👥 Department Control**
-Drag-and-drop mentor assignments with undo and history, capacity-aware workload, bulk invites, CSV/XLSX imports with row-level validation.
+**👥 Branch Control (HOD)**
+Drag-and-drop mentor assignments with undo and history, capacity-aware workload, bulk invites, CSV/XLSX imports with row-level validation — all limited to the HOD's own branch.
+
+**🏫 College Oversight (Principal)**
+College coverage and branch health, students grouped by branch, branch comparisons, HOD appointments with history and branch transfers. Branches are compared; students are never ranked.
 
 **📅 Sessions & Resources**
 Schedule one-to-one or group sessions (calendar `.ics` included), record summaries, share files and links through private, short-lived download links.
@@ -95,6 +99,64 @@ Row-Level Security on every table: a mentor sees only their active mentees, a st
 </td>
 </tr>
 </table>
+
+<br>
+
+## 🏫 One site for the whole college
+
+Mentora runs a whole college: every student, mentor, subject and record belongs to exactly one **branch**, and the database enforces who sees what.
+
+| Role | Sees | Can change |
+|---|---|---|
+| **Student** | Only their own records and shared feedback | Their profile, drafts, goal steps |
+| **Mentor** | Only students actively assigned to them (same branch) | Verifications, recommendations, sessions, resources |
+| **HOD** | Only the branch they currently head | Assignments, users (students/mentors), sections, subjects, branch grading override when allowed |
+| **Principal** | Every branch, read-only on student data — never private mentor notes | Branches, HOD appointments, branch transfers, college settings, imports/exports |
+
+- **Sign-up by USN** — `nnm23cs001@…` → branch code `cs` → CSE. Non-USN emails and unknown branch codes are refused with a clear message; the Principal can require the college email domain or turn sign-up off.
+- **Branches** — create, rename, reorder, archive (only when empty). Configured in `config/branches.json` (`code`, `name`, `usn_code`).
+- **HOD appointments** — one active HOD per branch, with history. When an appointment ends, access ends on the next request ("Your HOD access has ended"). A branch can be temporarily without an HOD; suspended heads are flagged.
+- **Branch transfers** — an HOD requests, the Principal approves (or moves a student directly). The student's records move with them, their mentor assignment ends, and everyone involved is notified.
+- **Branch switcher** — the Principal narrows any page to one branch (a sheet on phones); HODs see a fixed branch chip.
+- **Grading** — one college-default grading scheme and risk rules; HODs may override for their branch only when the Principal allows it. Finalized history is never recalculated.
+- **Out of scope = not found** — opening another branch's student, PDF or file returns 404, and searches, counts and exports only ever include your scope.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🏫 Principal — College overview**
+
+<img src="screenshots/principal-overview.png" alt="Principal college overview: coverage hero, branch tiles, branch comparison chart, students by branch donut, branch health table and needs-attention list">
+
+</td>
+<td width="50%" valign="top">
+
+**📚 Principal — Students by branch**
+
+<img src="screenshots/principal-students.png" alt="Students grouped by branch with coverage and flagged counts per branch">
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**👑 Principal — Heads of department**
+
+<img src="screenshots/principal-hods.png" alt="One HOD per branch with change/end actions and appointment history">
+
+</td>
+<td width="50%" valign="top">
+
+**🧭 HOD — Branch overview**
+
+<img src="screenshots/hod-branch-overview.png" alt="HOD overview limited to their own branch with the branch chip in the header">
+
+</td>
+</tr>
+</table>
+
+Verification details — scoping matrix, attack tests, revocation, college-size performance — are in [E2E_REPORT.md](E2E_REPORT.md).
 
 <br>
 
@@ -186,7 +248,7 @@ Upcoming and past sessions with a calendar that filters by day. Each session has
 
 **🏛️ HOD dashboard**
 
-<img src="screenshots/hod-dashboard.png" alt="HOD department overview">
+<img src="screenshots/hod-dashboard.png" alt="HOD branch overview">
 
 Mentoring coverage, students needing intervention, SGPA by section, risk overview and mentor workload — every tile and bar opens the matching filtered list.
 
@@ -204,9 +266,9 @@ Drag students between mentors or move several at once. Each change notifies the 
 <tr>
 <td width="50%" valign="top">
 
-**📊 Department analytics**
+**📊 Branch analytics**
 
-<img src="screenshots/analytics.png" alt="Department analytics">
+<img src="screenshots/analytics.png" alt="Branch analytics">
 
 Pass rate, SGPA distribution, trends by section and the subjects that need support — every chart has a **View as table** option.
 
@@ -227,11 +289,11 @@ Designed separately for mobile: bottom navigation, a quick-action sheet, swipeab
 
 ## 🚀 Try it
 
-1. Open **[mentora-zeta-six.vercel.app](https://mentora-zeta-six.vercel.app/)** and choose **Create an account** (students).
+1. Open **[mentora-zeta-six.vercel.app](https://mentora-zeta-six.vercel.app/)** and choose **Create an account** (students) with your USN email — your branch is taken from it.
 2. Complete the five-step setup — your details save as you go.
 3. Add a semester and enter your marks. Submit it when it matches your official result; your mentor verifies it.
 
-Mentors and HODs receive an email invitation from the department and set their own password.
+Mentors, HODs and the Principal receive an email invitation and set their own password.
 
 <br>
 
@@ -295,22 +357,25 @@ cd mentora
 pnpm install
 
 pnpm db:start                    # local Supabase: API :54321 · Studio :54323 · Mailpit :54324
-cp .env.example .env.local       # paste the local keys printed by db:start; set CRON_SECRET, SEED_HOD_*, DEMO_PASSWORD
+cp .env.example .env.local       # paste the local keys printed by db:start; set CRON_SECRET, SEED_HOD_*, SEED_PRINCIPAL_*, DEMO_PASSWORD, E2E_PASSWORD
+# edit config/branches.json with your branches (code, name, usn_code)
 pnpm db:reset && pnpm db:seed && pnpm db:seed:demo
+pnpm exec tsx tests/fixtures/multibranch.seed.ts   # optional: ECE/ME test branches + accounts for the multi-branch tests
 
 pnpm dev                         # http://localhost:3000
 ```
 
-The demo seed creates a department with 6 mentors and 60 students with realistic records. Their logins are listed in [DEMO.md](DEMO.md); passwords come from your `.env.local`.
+The base seed creates every branch from `config/branches.json`, the first HOD and the Principal; the demo seed adds 6 mentors and 60 students with realistic records to the first branch. Their logins are listed in [DEMO.md](DEMO.md); passwords come from your `.env.local`.
 
 | Script | What it does |
 |---|---|
 | `pnpm dev` / `pnpm build` | Develop / production build |
 | `pnpm typecheck` · `pnpm lint` | TypeScript and ESLint (React Compiler rules) |
 | `pnpm test` | Unit tests for the grading, insight and risk engines |
-| `pnpm test:rls` | Row-Level Security tests against the local database |
+| `pnpm test:rls` | Row-Level Security tests against the local database, incl. the multi-branch scoping matrix and policy lint |
 | `pnpm test:e2e` | Playwright journeys + a crawl of every page at desktop and phone widths |
 | `pnpm db:types` | Regenerate database types after a migration |
+| `docker exec -i supabase_db_mentora psql -U postgres < tests/fixtures/load.seed.sql` | College-size load data (8 branches × 400 students) for performance checks; `load.clean.sql` removes it |
 
 Deploying your own copy: see [DEPLOY.md](DEPLOY.md).
 

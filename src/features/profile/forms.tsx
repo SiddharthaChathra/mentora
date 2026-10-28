@@ -37,7 +37,7 @@ export function StudentPersonalFields({
     <div className="space-y-4">
       <Input id="full_name" label="Full name" autoComplete="name" value={v.full_name} onChange={(e) => set({ full_name: e.target.value })} error={errors.full_name} required />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input id="email" label="Email" value={email} readOnly hint="Set by your department" />
+        <Input id="email" label="Email" value={email} readOnly hint="Set by your college" />
         <Input id="phone" label="Phone" type="tel" autoComplete="tel" inputMode="tel" value={v.phone} onChange={(e) => set({ phone: e.target.value })} error={errors.phone} required />
       </div>
       {(optional.dob || optional.gender) && (
@@ -79,7 +79,7 @@ export function StudentAcademicFields({
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Input id="usn" label="USN / Student ID" autoCapitalize="characters" value={v.usn} onChange={(e) => set({ usn: e.target.value.toUpperCase() })} error={errors.usn} required />
-        <Input id="department" label="Department" value={departmentName ?? 'Not set'} readOnly hint="Assigned by your HOD" />
+        <Input id="department" label="Branch" value={departmentName ?? 'Not set'} readOnly hint="Set from your USN or invitation — only the Principal can move you to another branch" />
       </div>
       <Input id="program" label="Program" placeholder="B.E. Computer Science & Engineering" value={v.program} onChange={(e) => set({ program: e.target.value })} error={errors.program} required />
       <div className="grid gap-4 sm:grid-cols-2">
@@ -145,7 +145,7 @@ export function MentorFields({ v, set, errors, departmentName }: { v: MentorForm
         <Input id="designation" label="Designation" placeholder="Assistant Professor" value={v.designation} onChange={(e) => set({ designation: e.target.value })} error={errors.designation} required />
         <Input id="faculty_id" label="Faculty ID" value={v.faculty_id} onChange={(e) => set({ faculty_id: e.target.value.toUpperCase() })} error={errors.faculty_id} required />
       </div>
-      <Input id="department" label="Department" value={departmentName ?? 'Not set'} readOnly hint="Assigned by your HOD" />
+      <Input id="department" label="Branch" value={departmentName ?? 'Not set'} readOnly hint="Set from your USN or invitation — only the Principal can move you to another branch" />
       <TagInput id="expertise" label="Areas of expertise" value={v.expertise} onChange={(expertise) => set({ expertise })} suggestions={['Algorithms', 'Machine learning', 'Databases', 'Networks', 'Career guidance', 'Research']} />
     </div>
   )

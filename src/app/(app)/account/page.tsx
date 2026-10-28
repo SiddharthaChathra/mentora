@@ -56,7 +56,7 @@ export default async function AccountPage() {
             <CardBody className="text-sm text-ink-700">
               <p className="font-medium text-ink-900">Your role</p>
               <p className="mt-1">
-                <Pill tone="brand">{actor.role === 'MENTEE' ? 'Mentee' : actor.role === 'MENTOR' ? 'Mentor' : 'Head of Department'}</Pill>
+                <Pill tone="brand">{actor.role === 'MENTEE' ? 'Mentee' : actor.role === 'MENTOR' ? 'Mentor' : actor.role === 'PRINCIPAL' ? 'Principal' : 'Head of Department'}</Pill>
               </p>
               <p className="mt-2 text-xs text-ink-500">Roles are assigned by your HOD and can’t be changed here.</p>
             </CardBody>

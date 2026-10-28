@@ -59,8 +59,8 @@ const STEPS: Record<Role, Step[]> = {
     { key: 'review', title: 'Mentees & finish', description: 'See who is assigned to you, then get started.', illustration: 'no-mentees' },
   ],
   HOD: [
-    { key: 'profile', title: 'Your profile', description: 'A short profile for your department.', illustration: 'step-profile' },
-    { key: 'review', title: 'Finish', description: 'Head to the department overview.', illustration: 'success' },
+    { key: 'profile', title: 'Your profile', description: 'A short profile for your branch.', illustration: 'step-profile' },
+    { key: 'review', title: 'Finish', description: 'Head to your overview.', illustration: 'success' },
   ],
 }
 

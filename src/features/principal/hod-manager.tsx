@@ -17,7 +17,7 @@ export type HodBranch = {
   id: string
   code: string
   name: string
-  head: { id: string; name: string | null; since: string; hasAvatar: boolean } | null
+  head: { id: string; name: string | null; since: string; hasAvatar: boolean; suspended: boolean } | null
   candidates: { id: string; name: string | null; email: string; role: string }[]
   history: { id: string; name: string | null; startedAt: string; endedAt: string | null; reason: string | null; endReason: string | null }[]
 }
@@ -78,7 +78,9 @@ export function HodManager({ branches, focus }: { branches: HodBranch[]; focus?:
                 <>
                   <Avatar userId={b.head.id} name={b.head.name} hasImage={b.head.hasAvatar} size="md" />
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-ink-900">{b.head.name ?? 'HOD'}</p>
+                    <p className="flex flex-wrap items-center gap-1.5 font-semibold text-ink-900">
+                      <span className="truncate">{b.head.name ?? 'HOD'}</span> {b.head.suspended && <Pill tone="danger">Account suspended — appoint someone else</Pill>}
+                    </p>
                     <p className="text-xs text-ink-500">HOD since {fmtDate(b.head.since, 'd MMM yyyy')}</p>
                   </div>
                 </>
@@ -152,7 +154,7 @@ export function HodManager({ branches, focus }: { branches: HodBranch[]; focus?:
         loading={busy}
         destructive
         title={`End the ${end?.code} HOD appointment?`}
-        description="They lose HOD access on their next request and see an “access ended” page. The branch shows “No HOD” until you appoint someone."
+        description="They lose HOD access on their next request and see an “access ended” page. The branch shows “No HOD” until you appoint someone. If they go back to mentoring, change their role to Mentor on the Users page."
         confirmLabel="End appointment"
         onConfirm={doEnd}
       />

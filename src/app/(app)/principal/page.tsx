@@ -56,12 +56,12 @@ export default async function PrincipalOverview({ searchParams }: { searchParams
     loadCollegeDigest(db, branches, scope),
     db.from('student_branch_transfers').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
   ])
-  const rows: BranchHealthRow[] = parts.map((p) => ({ id: p.branch.id, code: p.branch.code, name: p.branch.name, headName: p.branch.headName, ...branchHealth(p) }))
+  const rows: BranchHealthRow[] = parts.map((p) => ({ id: p.branch.id, code: p.branch.code, name: p.branch.name, headName: p.branch.headName, headSuspended: p.branch.headSuspended, ...branchHealth(p) }))
   const total = rows.reduce((a, r) => a + r.students, 0)
   const assigned = parts.reduce((a, p) => a + p.roster.filter((r) => r.mentorId).length, 0)
   const flagged = rows.reduce((a, r) => a + r.flagged, 0)
   const coverage = total ? Math.round((assigned / total) * 100) : null
-  const noHod = branches.filter((b) => !b.headId)
+  const noHod = branches.filter((b) => !b.headId || b.headSuspended)
   const lowCoverage = rows.filter((r) => r.students > 0 && (r.coverage ?? 0) < LOW_COVERAGE)
 
   return (
@@ -96,7 +96,7 @@ export default async function PrincipalOverview({ searchParams }: { searchParams
             cta={{ label: 'See branches', href: '/principal/branches' }}
           />
           <div className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-[24px] bg-surface p-3 shadow-2 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:p-4 lg:col-span-8 xl:grid-cols-3">
-            <PastelStatTile className={TILE_SNAP} label="Branches" value={branches.length} tile="blue" icon={<Building2 />} href="/principal/branches" helper={noHod.length ? `${noHod.length} without an HOD` : 'Every branch has an HOD'} />
+            <PastelStatTile className={TILE_SNAP} label="Branches" value={branches.length} tile="blue" icon={<Building2 />} href="/principal/branches" helper={noHod.length ? `${noHod.length} without an active HOD` : 'Every branch has an HOD'} />
             <PastelStatTile className={TILE_SNAP} label="Students" value={total} tile="green" icon={<Users />} href="/principal/students" helper={`${rows.filter((r) => r.students).length} branches with students`} />
             <PastelStatTile className={TILE_SNAP} label="Mentors" value={rows.reduce((a, r) => a + r.mentors, 0)} tile="lilac" icon={<LifeBuoy />} href="/principal/mentors" helper="Active faculty mentors" />
             <PastelStatTile className={TILE_SNAP} label="Unassigned" value={total - assigned} tile="peach" icon={<UserX />} href="/principal/students?risk=unassigned&view=table" helper="Students without a mentor" />
@@ -142,7 +142,7 @@ export default async function PrincipalOverview({ searchParams }: { searchParams
                     {noHod.map((b) => (
                       <li key={b.id} className="relative flex items-center justify-between gap-3 rounded-[14px] bg-surface-muted px-3 py-2.5">
                         <Link href={`/principal/hods?branch=${b.code}`} className="font-semibold text-ink-900 after:absolute after:inset-0">
-                          {b.code} has no HOD
+                          {b.code} {b.headSuspended ? 'HOD is suspended' : 'has no HOD'}
                         </Link>
                         <Pill tone="accent">Appoint</Pill>
                       </li>

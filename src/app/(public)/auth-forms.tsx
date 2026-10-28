@@ -192,7 +192,7 @@ export function SignupForm() {
           Sign in
         </Link>
       </p>
-      <p className="text-center text-xs text-ink-500">Mentors and HODs join by invitation from the department.</p>
+      <p className="text-center text-xs text-ink-500">Mentors and HODs join by invitation from the college.</p>
     </form>
   )
 }

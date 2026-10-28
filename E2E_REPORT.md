@@ -94,3 +94,19 @@ Production build ✅ (built with local env; see Performance).
 - **Rubric v2 scoring** of the new screens was not formally scored.
 - Principal college views cache digests for 60 s per session; writes through the app invalidate them, but changes made outside the app (SQL, cron) can show up to 60 s late.
 - `mc` (MCA) and `ml` (AIML) USN codes in `config/branches.json` are assumptions — check against real USNs.
+
+## Exploratory user testing (28 Oct 2026) — every role, by hand-scripted journeys
+Journeys: new student (USN and non-USN sign-up → setup), mentee, mentor, HOD (invite, settings, transfer card), Principal (every page, create/archive branch, branch-grading switch on/off with an HOD override saved in between, import into ECE with a wrong-branch row, exports CSV/XLSX/PDF, invite into ECE, notify HOD, search, phone branch sheet, appoint/end an HOD), former HOD. No crashes, console errors or 5xx.
+
+| Found | Fix |
+|---|---|
+| Non-USN sign-up showed a generic "couldn't create your account" (Auth hides trigger messages) | migration 019 `signup_email_problem()` pre-check (rules only, never reveals existing accounts) → exact reason shown |
+| Creating a branch with a USN code already used (e.g. by an archived branch) said "That USN is already registered" | branch-specific conflict messages |
+| Principal's account page showed a "Head of Department" badge | role-correct badge |
+| A suspended HOD was shown as a normal head; branch not in "Needs your attention" | `headSuspended`: flagged on overview, health table, HODs page, students headers; counted as "without an active HOD" |
+| Grouped students opened with every branch collapsed | branches with students start open |
+| College analytics trend said "per section" | "College SGPA trend · per branch" |
+| Ending an appointment left the person stuck as HOD with no hint | dialog explains changing their role to Mentor |
+| "Department" wording on HOD/auth/landing pages; landing had no Principal | "branch"/"college" wording; Principal card + updated security blurb |
+
+Re-run after fixes: typecheck ✅ · lint ✅ · unit 64/64 ✅ · RLS 40/40 ✅ · e2e smoke + crawl + multibranch 21/21 ✅ (79 routes × 2 widths, 0 problems) · two consecutive full gate runs ✅ (06:12–06:40 IST).

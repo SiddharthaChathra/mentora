@@ -887,6 +887,9 @@ isOneToOne: false
 "set_user_status":
 { Args: { "p_status": Database["public"]['Enums']["user_status"],"p_user": string }; Returns: undefined
                            },
+"signup_email_problem":
+{ Args: { "p_email": string }; Returns: string
+                           },
 "tables_without_rls":
 { Args: Record<PropertyKey, never>; Returns: {
               "tablename": string

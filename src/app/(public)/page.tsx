@@ -27,17 +27,25 @@ const ROLES: { eyebrow: string; title: string; body: string; points: string[]; i
   },
   {
     eyebrow: 'For HODs',
-    title: 'The whole department, structured and accountable',
+    title: 'Your whole branch, structured and accountable',
     body: 'Assign and rebalance mentors with drag and drop, track coverage and workload, find students who need intervention and keep a complete audit history.',
     points: ['Mentoring hierarchy and coverage', 'Bulk import with preview and validation', 'Grading schemes and risk rules you control'],
     icon: 'coverage',
     tile: 'bg-tile-peach',
   },
+  {
+    eyebrow: 'For the Principal',
+    title: 'The whole college, branch by branch',
+    body: 'Every student grouped by branch, branch-by-branch comparisons and health, HOD appointments and branch transfers — read-only on student records, so ownership stays clear.',
+    points: ['College coverage and branch health at a glance', 'Appoint HODs and approve branch transfers', 'Branches compared — students never ranked'],
+    icon: 'mentees',
+    tile: 'bg-tile-lilac',
+  },
 ]
 
 const SECURITY = [
   { icon: LockKeyhole, title: 'Row-level security', body: 'Access rules live in the database. Mentors only ever see students actively assigned to them.' },
-  { icon: KeyRound, title: 'Roles you can trust', body: 'Students sign up as students only. Mentor and HOD roles are granted by the HOD through an audited admin flow.' },
+  { icon: KeyRound, title: 'Roles you can trust', body: 'Students sign up as students only, in the branch named by their USN. HODs see only their branch; HOD appointments and roles change through an audited flow.' },
   { icon: FileLock2, title: 'Private files', body: 'Uploads stay private and are served through short-lived links after a permission check.' },
   { icon: ShieldCheck, title: 'Full audit trail', body: 'Changes to marks, CGPA, assignments and mentoring records record who, what and when.' },
 ]
@@ -102,7 +110,7 @@ export default function LandingPage() {
               <h2 className="mt-3 text-[2rem] font-bold tracking-tight text-ink-900 sm:text-[2.5rem]">Built around the mentee profile</h2>
               <p className="mt-3 text-lg text-ink-500">After sign-in, Mentora recognises your role on the server and takes you straight to the workspace made for you.</p>
             </div>
-            <div className="mt-12 grid gap-5 lg:grid-cols-3">
+            <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
               {ROLES.map((r) => (
                 <article key={r.title} className="flex flex-col rounded-[24px] bg-surface p-6 shadow-2 sm:p-8">
                   <div className={`grid size-20 place-items-center rounded-[20px] ${r.tile}`}>
@@ -147,7 +155,7 @@ export default function LandingPage() {
 
           {/* CTA */}
           <section className="py-16 text-center">
-            <h2 className="text-[2rem] font-bold tracking-tight text-ink-900">Ready when your department is.</h2>
+            <h2 className="text-[2rem] font-bold tracking-tight text-ink-900">Ready when your college is.</h2>
             <p className="mx-auto mt-3 max-w-xl text-ink-500">Accounts are created by your HOD. Check your inbox for an invitation, or sign in if you already have one.</p>
             <Link href="/login" className={`${buttonVariants({ size: 'lg' })} mt-8`}>
               Sign in <ArrowRight />

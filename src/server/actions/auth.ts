@@ -47,6 +47,9 @@ export async function signUp(input: unknown) {
     const { full_name, email, password } = signupSchema.parse(input)
     await rateLimit('signup', 5, 15 * 60_000)
     const db = await createClient()
+    // Rule check first (USN shape, known branch, domain, sign-up open): Auth would hide the trigger's reason.
+    const { data: problem } = await db.rpc('signup_email_problem', { p_email: email })
+    if (problem) throw new AppError('VALIDATION', problem, { email: [problem] })
     const { data, error } = await db.auth.signUp({
       email,
       password,
@@ -55,6 +58,7 @@ export async function signUp(input: unknown) {
     if (error) {
       if (error.status === 429) throw new AppError('RATE_LIMITED', 'Too many attempts. Please wait a few minutes and try again.')
       if (/turned off/i.test(error.message)) throw new AppError('FORBIDDEN', 'Sign-up is turned off. Ask your HOD for an invitation.')
+      // The only rule left for the trigger is a USN that is already registered; answer like any existing account.
       throw new AppError('BAD_REQUEST', 'We couldn’t create your account. If you already have one, sign in or reset your password.')
     }
     // Existing emails come back without identities; answer the same way so accounts can't be probed.

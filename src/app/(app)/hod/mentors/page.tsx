@@ -34,7 +34,7 @@ export default async function HodMentorsPage({ searchParams }: { searchParams: P
       <PageHeader
         title="Mentor"
         accent="directory"
-        description="Workload, activity and coverage for every mentor in your department."
+        description="Workload, activity and coverage for every mentor in your branch."
         actions={
           <Link href="/hod/users?invite=1&role=MENTOR" className={buttonVariants()}>
             Invite mentor

@@ -12,7 +12,7 @@ import { NotEnoughData } from '@/components/ui/states'
 import { ChartFrame, type TableData } from './chart-frame'
 
 // ───────────────────────────── Department trend ─────────────────────────────
-export function DepartmentTrend({ data, series }: { data: Record<string, number | string | null>[]; series: string[] }) {
+export function DepartmentTrend({ data, series, groupLabel = 'section' }: { data: Record<string, number | string | null>[]; series: string[]; groupLabel?: 'section' | 'branch' }) {
   const { lowBandwidth } = useLowBandwidth()
   const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)']
   const table: TableData = {
@@ -21,7 +21,7 @@ export function DepartmentTrend({ data, series }: { data: Record<string, number 
     rows: data.map((d) => [String(d.name), ...series.map((s) => (d[s] == null ? null : Number(d[s]).toFixed(2)))]),
   }
   return (
-    <ChartFrame title="Department SGPA trend" description="Average verified SGPA by semester, per section" table={table}>
+    <ChartFrame title={groupLabel === 'branch' ? 'College SGPA trend' : 'Branch SGPA trend'} description={`Average verified SGPA by semester, per ${groupLabel}`} table={table}>
       {data.length < 2 ? (
         <NotEnoughData reason="Trends appear once two or more semesters have verified SGPA." />
       ) : (

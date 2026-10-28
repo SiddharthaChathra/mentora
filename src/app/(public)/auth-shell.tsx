@@ -26,7 +26,7 @@ export function AuthShell({ children, title, accent, subtitle }: { children: Rea
               {subtitle && <p className="mt-2 text-base text-ink-500">{subtitle}</p>}
               <div className="mt-7">{children}</div>
             </div>
-            <p className="mt-6 text-center text-xs text-ink-500">Students can create an account; mentors and HODs are invited by the department.</p>
+            <p className="mt-6 text-center text-xs text-ink-500">Students can create an account; mentors and HODs are invited by the college.</p>
           </main>
         </div>
 

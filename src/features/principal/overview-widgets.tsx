@@ -11,6 +11,7 @@ export type BranchHealthRow = {
   code: string
   name: string
   headName: string | null
+  headSuspended: boolean
   students: number
   mentors: number
   coverage: number | null
@@ -100,7 +101,18 @@ export function BranchHealthTable({ rows }: { rows: BranchHealthRow[] }) {
             </span>
           ),
         },
-        { key: 'hod', header: 'HOD', render: (r) => (r.headName ? <span className="text-ink-700">{r.headName}</span> : <Pill tone="accent">No HOD</Pill>) },
+        {
+          key: 'hod',
+          header: 'HOD',
+          render: (r) =>
+            r.headName ? (
+              <span className="flex flex-wrap items-center gap-1.5 text-ink-700">
+                {r.headName} {r.headSuspended && <Pill tone="danger">Suspended</Pill>}
+              </span>
+            ) : (
+              <Pill tone="accent">No HOD</Pill>
+            ),
+        },
         { key: 'students', header: 'Students', className: 'text-right', render: (r) => <span className="num font-semibold text-ink-900">{r.students}</span> },
         { key: 'mentors', header: 'Mentors', className: 'text-right', render: (r) => <span className="num text-ink-700">{r.mentors}</span> },
         { key: 'coverage', header: 'Coverage', render: (r) => <PercentBar value={r.coverage} label={`${r.code} mentoring coverage`} /> },
