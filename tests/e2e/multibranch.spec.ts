@@ -121,7 +121,7 @@ for (const width of [1440, 834, 390]) {
     await page.goto('/principal/students?branch=ECE')
     await expect(page.getByText('E2E Bhavya ECE One').locator('visible=true').first()).toBeVisible()
     await page.goto('/principal/students?branch=ALL')
-    await expect(page.locator('details summary').filter({ hasText: 'ECE' })).toBeVisible()
+    await expect(page.locator('details summary').filter({ has: page.getByText('ECE', { exact: true }) })).toBeVisible()
     const b1 = await idOf(`b1.ece@${D}`)
     await page.goto(`/principal/students/${b1}`)
     await expect(page.getByText('Viewing as Principal · read-only.')).toBeVisible()
