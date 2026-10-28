@@ -58,7 +58,7 @@ export function BranchComparison({ rows }: { rows: BranchHealthRow[] }) {
         { key: 'prev', label: 'Previous sem', color: 'var(--chart-3)' },
         { key: 'latest', label: 'Latest sem', color: 'var(--chart-1)' },
       ]}
-      rows={bars}
+      rows={bars.filter((b) => Object.values(b.values).some((v) => v != null))}
       max={10}
       unit=""
       decimals={2}
@@ -70,7 +70,7 @@ export function BranchComparison({ rows }: { rows: BranchHealthRow[] }) {
       title="Branch comparison"
       description={metric === 'coverage' ? 'Share of students with an active mentor.' : 'Share of students with no records or a missing semester.'}
       series={[{ key: 'value', label: metric === 'coverage' ? 'Coverage' : 'Missing records', color: metric === 'coverage' ? 'var(--chart-2)' : 'var(--chart-4)' }]}
-      rows={bars}
+      rows={bars.filter((b) => Object.values(b.values).some((v) => v != null))}
       max={100}
       unit="%"
       decimals={0}

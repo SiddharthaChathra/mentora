@@ -31,5 +31,12 @@ Target: Supabase (cloud project) + Vercel. Secrets go only into Vercel/Supabase 
 - Run `SEED_HOD_EMAIL=… SEED_HOD_PASSWORD=… pnpm db:seed` against the cloud project (env pointing at it) to create the department, grading scheme and HOD. Do **not** run `db:seed:demo` in production.
 - Sign in as HOD → Users & roles to invite mentors and students, or use Bulk import.
 
+### MANUAL STEP M7 — Multi-branch (college-wide) upgrade
+1. Back up production (Supabase → Database → Backups, or `supabase db dump` against prod).
+2. Edit `config/branches.json` with your real branches (`code`, `name`, `usn_code` = the letters after the year in a USN). Check the `usn_code` values against real USNs.
+3. Vercel → Settings → Environment Variables (Production): add `SEED_PRINCIPAL_EMAIL`, `SEED_PRINCIPAL_PASSWORD`, `EXISTING_DATA_BRANCH_CODE` (the branch your current data belongs to, e.g. CSE), optional `STUDENT_EMAIL_DOMAIN`. Never add `E2E_PASSWORD` to production.
+4. Apply migrations 011–018 to prod (`supabase db push` linked to prod), then run `ENV_FILE=.env.production.local pnpm db:seed`. Verify: row counts unchanged, no NULL branches, every active assignment same-branch, existing HOD still sees the same students (queries in E2E_REPORT.md → Data migration). Do **not** seed the E2E or load fixtures.
+5. Deploy, sign in as the Principal, change the temporary password, appoint the real HODs in /principal/hods.
+
 ## Post-deploy checks
 `pnpm test:e2e` with `E2E_BASE_URL=https://<your-domain>` (demo data required) · verify a PDF report downloads · check Vercel cron logs after the first run.

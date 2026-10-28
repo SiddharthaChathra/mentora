@@ -2,7 +2,7 @@
 
 # 🎓 Mentora
 
-### Smart Mentor–Mentee Management for Engineering Departments
+### Smart Mentor–Mentee Management for a Whole Engineering College
 
 <br>
 
@@ -12,8 +12,8 @@
 </p>
 
 <p>
-  <img alt="Tests" src="https://img.shields.io/badge/tests-80_passing-22C55E?style=flat-square&labelColor=0f172a">
-  <img alt="Pages checked" src="https://img.shields.io/badge/E2E_crawl-53_pages_×_2_widths-22C55E?style=flat-square&labelColor=0f172a">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-125_passing-22C55E?style=flat-square&labelColor=0f172a">
+  <img alt="Pages checked" src="https://img.shields.io/badge/E2E_crawl-79_routes_×_2_widths-22C55E?style=flat-square&labelColor=0f172a">
   <img alt="Last Commit" src="https://img.shields.io/github/last-commit/SiddharthaChathra/mentora?style=flat-square&color=2563EB&labelColor=0f172a">
   <img alt="Stars" src="https://img.shields.io/github/stars/SiddharthaChathra/mentora?style=flat-square&color=2563EB&labelColor=0f172a">
 </p>
@@ -318,8 +318,9 @@ Deploying your own copy: see [DEPLOY.md](DEPLOY.md).
 
 ## 🛡️ Security Model
 
-- **Row-Level Security on every table.** A mentor can read only students *actively* assigned to them; a student only their own data; the HOD only their department. Private mentor notes are never visible to students.
-- **Roles live in the database.** They are read from `public.users`, never from anything the browser sends. Self sign-up can only ever create a student account, and changing roles is an audited HOD-only operation.
+- **Row-Level Security on every table.** A mentor can read only students *actively* assigned to them; a student only their own data; an HOD only the branch they currently head; the Principal every branch, read-only, and never private mentor notes. Out-of-scope pages are a plain 404.
+- **Branches are enforced in the database.** Mentor and mentee must share a branch (`MB_CROSS_BRANCH`); changing an HOD or moving a student revokes old access on the very next request.
+- **Roles live in the database.** They are read from `public.users`, never from anything the browser sends. Self sign-up can only ever create a student account, in the branch named by the USN email; HOD appointments and role changes are audited.
 - **Locked records.** Once a semester is verified, its marks can change only through an approved correction request, applied in a single transaction.
 - **Service-role key is fenced off.** It is used only in server code under `src/server/admin/*`, after an HOD or cron-secret check, and ESLint blocks it everywhere else.
 - **Private files.** Avatars and resources live in private buckets and are served through short-lived signed links after a permission check.
@@ -332,9 +333,9 @@ Deploying your own copy: see [DEPLOY.md](DEPLOY.md).
 
 | Suite | Count | Covers |
 |---|---|---|
-| Unit (Vitest) | 55 | Grade resolution, SGPA/CGPA, insights, risk rules |
-| RLS (Vitest + live Postgres) | 13 | Cross-student isolation, mentor scope, role escalation, locked records, notifications, sign-up roles |
-| End-to-end (Playwright) | 12 | Sign-up → setup, marks → verify → correction, invites, password reset, assignments, semester filter, PDFs, plus a crawl of **53 pages × 2 screen widths** for crashes, console errors and layout overflow |
+| Unit (Vitest) | 64 | Grade resolution, SGPA/CGPA, insights, risk rules, scope helpers, admin paths refuse before any service-role call |
+| RLS (Vitest + live Postgres) | 40 | Scoping matrix (10 actors × every student-data table × 3 branches), cross-branch writes, storage, HOD-change and transfer revocation, policy lint, sign-up |
+| End-to-end (Playwright) | 21 | Smoke journeys, multi-branch attack tests (404s, leak scan of pages/PDFs/exports/search), Principal journeys at 1440/834/390, transfer and HOD-revocation flows, plus a crawl of **79 routes × 2 screen widths** for all four roles |
 
 <br>
 
@@ -342,7 +343,8 @@ Deploying your own copy: see [DEPLOY.md](DEPLOY.md).
 
 | Document | Contents |
 |---|---|
-| [USER_GUIDE.md](USER_GUIDE.md) | How students, mentors and HODs use Mentora |
+| [USER_GUIDE.md](USER_GUIDE.md) | How students, mentors, HODs and the Principal use Mentora |
+| [E2E_REPORT.md](E2E_REPORT.md) | Multi-branch verification: migration checks, scoping matrix, fixes, performance |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Route map, folder layout, security model, data rules |
 | [DESIGN.md](DESIGN.md) | The "Sky Dashboard" design system: tokens, type, components, contrast |
 | [FEATURES.md](FEATURES.md) | Feature checklist with verification status |

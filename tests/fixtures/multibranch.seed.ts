@@ -4,7 +4,7 @@
  *
  * Branches: CSE (existing demo data, HOD_CSE = the seeded HOD), ECE (HOD_ECE), ME (no HOD), ARCHV (archived, empty).
  * People:   P (Principal), HOD_CSE, HOD_ECE, FORMER_HOD (ISE, appointment ended), SUSPENDED_HOD (AIML, suspended),
- *           M_CSE_1 (the demo mentor with mentees A1, A2), M_CSE_2 (no mentees), M_ECE_1 (B1), M_ECE_2, M_ME_1 (C1),
+ *           M_CSE_1 (the demo mentor with mentees A1, A2), M_CSE_2 (mentor of T1 only), M_ECE_1 (B1), M_ECE_2, M_ME_1 (C1),
  *           A1, A2 (CSE demo mentees), A3 (CSE, unassigned), B1 (ECE), C1 (ME), T1 (CSE, moved to ECE by tests).
  * Each fixture student has DRAFT/VERIFIED/FINALIZED semesters, SHARED + PRIVATE_MENTOR records, a resource file,
  * a session and a change request.
@@ -147,12 +147,12 @@ export async function seedMultibranch() {
   const { data: mCse1Row } = await db.from('users').select('id').eq('email', 'ramesh.rao@demo.mentora.edu').single()
   const mCse1 = mCse1Row!.id
   await assign(a3, null)
-  await assign(t1, mCse1)
+  await assign(t1, mCse2)
   await assign(b1, mEce1)
   await assign(c1, mMe1)
 
   const [sCse, sEce, sMe] = await Promise.all([subjectsFor(cse.id, 'XCS'), subjectsFor(ece.id, 'XEC'), subjectsFor(me.id, 'XME')])
-  await studentData(t1, mCse1, sCse, 'T1')
+  await studentData(t1, mCse2, sCse, 'T1')
   await studentData(a3, null, sCse, 'A3')
   await studentData(b1, mEce1, sEce, 'B1')
   await studentData(c1, mMe1, sMe, 'C1')
@@ -161,7 +161,6 @@ export async function seedMultibranch() {
     if (!count) await db.from('notifications').insert({ user_id: u, type: 'fixture', title: `Fixture notice ${t}` })
   }
   void P
-  void mCse2
   console.log('✔ Multi-branch fixture ready (CSE, ECE, ME, ARCHV; P, HOD_ECE, FORMER_HOD, SUSPENDED_HOD, mentors, A3, B1, C1, T1)')
 }
 

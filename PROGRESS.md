@@ -1,16 +1,17 @@
 # PROGRESS.md
 
-## Latest (2026-10-25)
-- Finished: D1–D4 deploy. Live at https://mentora-zeta-six.vercel.app (Vercel Hobby, auto-deploys `main` from github.com/SiddharthaChathra/mentora, public repo). Cloud Supabase project `ikeauzqhzpqtsjfbrolr` (free, separate account): migrations 001–010 applied, base seed + HOD created (no demo data).
-- D3: student self sign-up (`/signup`) — migration 010 trigger makes every self sign-up an ACTIVE MENTEE in the default department; HOD can disable with `app_settings.self_signup = false`.
-- D5 fix: semester switcher now filters every scoped mentor/HOD/student page (`src/lib/scope.ts` route list + `inScope`, `loadDepartment(db, actor, scope)`, `ScopeChip`); in-page duplicate semester dropdowns removed.
-- D6 user-level E2E pass: crawl of 53 pages × 2 widths (all roles) + journeys (signup→setup, marks grid→submit→verify→correction→approve, goals/steps/status, sessions+ics+summary, resource upload/ACL, reassign+undo, invite→accept, reset password, follow-ups, settings, imports, exports, audit, avatar, prefs, password, suspend/reactivate, palette, PDFs). Fixed: invite/reset/signup links (implicit-flow `/auth/callback`), assignments Move menu crash (MenuItem asChild), suspended users → /suspended, page overflow (global grid min-w-0, scroller containment, ChartFrame), oversized calendar, new goals hidden after create, blank-able required selects, import plurals, dev login rate-limit shared across browsers.
-- Gates: typecheck ✅ · lint ✅ · unit 55/55 ✅ · RLS 13/13 ✅ · e2e 12/12 local (+crawl) ✅ · build ✅ · live smoke 1/1 ✅ (`LIVE=1 E2E_BASE_URL=… pnpm exec playwright test live`).
-- Decisions: public repo (user request); anon key stored as Vercel `config` (public by design), service role as `secret`; prod env values live only in gitignored `.env.production.local` + Vercel.
-- Open (human): Supabase → Auth → turn off "Confirm email" OR add free SMTP (Gmail app password) — the built-in mailer only emails project team members, so confirmation/invite/reset emails won't reach students otherwise. Optional: Resend, Gemini.
-- Known issues: none failing. Local dev needs Docker Desktop running.
+## Latest (2026-10-27) — Multi-branch ✅ (local dev; production not migrated)
+- Built: college-wide Mentora. Branches (departments + usn_code/status/order), HOD appointments with history, PRINCIPAL role (read-only on student data, never PRIVATE_MENTOR), branch transfers (HOD request → Principal approve/move), USN-based self sign-up (nnm23cs001@… → CSE), /principal portal (13 pages), HOD branch chip + transfer request + “access ended” page, branch switcher (sheet on phones).
+- DB: migrations 011–018 (enum, schema + backfill, helpers + RLS rewrite, RPCs, Principal helpers, policy inventory, scope tightening, RLS performance). Dev data migrated with equal row counts (E2E_REPORT.md).
+- Tests: unit 64, RLS 40 (scoping matrix, policy lint), e2e smoke 9 + crawl 4 (79 routes × 2 widths, all 4 roles) + multibranch 8. Fixtures: tests/fixtures/multibranch.seed.ts, load.seed.sql/load.clean.sql.
+- Perf (8 branches × 400 students): prod build p95 < 0.75 s on every measured page; dev server 2.7–3.9 s on branch-sized pages (E2E_REPORT.md).
+- Decisions: “Branch” = departments row; one HOD per branch; Principal college-wide read-only; college-default grading with optional branch override; out-of-scope = 404; Principal college pages cache digests 60 s per session (invalidated on writes).
+- Dev defaults added (change freely): .env.local SEED_PRINCIPAL_EMAIL=principal@demo.mentora.edu (+ password), E2E_PASSWORD, EXISTING_DATA_BRANCH_CODE=CSE, STUDENT_EMAIL_DOMAIN=''; config/branches.json (mc=MCA, ml=AIML are guesses).
+- Open (human): DEPLOY.md M7 — real branches/USN codes, Principal email, back up + migrate prod, appoint HODs. Not pushed.
+- Gaps: visual regression vs baseline, axe/Lighthouse, Rubric v2 scoring of new screens not done.
 
 ## History
+- MB: multi-branch college (branches, HOD appointments, Principal, transfers, USN sign-up).
 - V1: full app (auth, roles, RLS, records, mentoring, HOD admin, imports/exports, PDF, notifications, cron, demo seed).
 - V2.R1–R4: tokens, Plus Jakarta Sans, 3D icons/scenes, component library, shell, mentee overview, auth pages, styleguide.
 - V2.R5: mentor/HOD overviews, all remaining screens, UX2 features, lint clean.

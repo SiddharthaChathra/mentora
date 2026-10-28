@@ -24,7 +24,9 @@ beforeAll(async () => {
   hod = await signIn(process.env.SEED_HOD_EMAIL!, process.env.SEED_HOD_PASSWORD!)
   mentor = await signIn('ramesh.rao@demo.mentora.edu', process.env.DEMO_PASSWORD!)
   // A mentee actively assigned to this mentor, and one who is not.
-  const { data: mine } = await hod.db.from('mentor_assignments').select('student_id').eq('mentor_id', mentor.id).is('ended_at', null)
+  const { data: mineAll } = await hod.db.from('mentor_assignments').select('student_id, users!mentor_assignments_student_id_fkey(email)').eq('mentor_id', mentor.id).is('ended_at', null)
+  // Only demo-seeded mentees share DEMO_PASSWORD (fixture students use E2E_PASSWORD).
+  const mine = (mineAll ?? []).filter((m) => String((m.users as unknown as { email: string }).email).endsWith('@demo.mentora.edu'))
   const { data: others } = await hod.db.from('mentor_assignments').select('student_id').neq('mentor_id', mentor.id).is('ended_at', null).limit(1)
   const menteeId = mine![0]!.student_id
   otherMenteeId = others![0]!.student_id

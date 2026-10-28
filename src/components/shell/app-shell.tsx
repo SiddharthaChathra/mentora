@@ -385,7 +385,7 @@ function BranchSwitcher({ branches, value }: { branches: BranchOption[]; value: 
       <BranchSheet branches={branches} value={valid} onPick={set} />
       <label data-tour="branch" className="relative hidden sm:inline-flex">
       <span className="sr-only">Branch</span>
-      <select value={valid} onChange={(e) => set(e.target.value)} className="h-10 max-w-[8.5rem] cursor-pointer appearance-none truncate rounded-full border border-primary-200 bg-primary-50 pr-8 pl-3 text-xs font-semibold text-primary-700 outline-none hover:border-primary-300 focus-visible:border-primary-600 sm:h-11 sm:max-w-none sm:pr-9 sm:pl-4 sm:text-sm">
+      <select value={valid} onChange={(e) => set(e.target.value)} className="h-10 max-w-[8.5rem] cursor-pointer appearance-none truncate rounded-full border border-primary-200 bg-primary-50 pr-8 pl-3 text-xs font-semibold text-primary-700 outline-none hover:border-primary-300 focus-visible:border-primary-600 sm:h-11 sm:max-w-[13rem] sm:pr-9 sm:pl-4 sm:text-sm">
         <option value="">All branches</option>
         {branches.map((b) => (
           <option key={b.code} value={b.code}>

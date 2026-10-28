@@ -93,7 +93,7 @@ export default async function PrincipalOverview({ searchParams }: { searchParams
             suffix="%"
             caption={total ? `${assigned} of ${total} students have a mentor` : undefined}
             emptyText="No students registered yet"
-            cta={{ label: 'See branches →', href: '/principal/branches' }}
+            cta={{ label: 'See branches', href: '/principal/branches' }}
           />
           <div className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-[24px] bg-surface p-3 shadow-2 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:p-4 lg:col-span-8 xl:grid-cols-3">
             <PastelStatTile className={TILE_SNAP} label="Branches" value={branches.length} tile="blue" icon={<Building2 />} href="/principal/branches" helper={noHod.length ? `${noHod.length} without an HOD` : 'Every branch has an HOD'} />

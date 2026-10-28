@@ -81,10 +81,11 @@ beforeAll(async () => {
   actors.M_CSE_1 = await signIn('ramesh.rao@demo.mentora.edu', process.env.DEMO_PASSWORD!)
   actors.M_ECE_1 = await signIn(`m.ece1@${D}`, E2E)
   ramesh = actors.M_CSE_1.id
-  const { data: mine } = await admin.from('mentor_assignments').select('student_id').eq('mentor_id', ramesh).is('ended_at', null).limit(1)
-  a1 = mine![0]!.student_id
-  const { data: a1u } = await admin.from('users').select('email').eq('id', a1).single()
-  actors.A1 = await signIn(a1u!.email, process.env.DEMO_PASSWORD!)
+  const { data: mine } = await admin.from('mentor_assignments').select('student_id, users!mentor_assignments_student_id_fkey(email)').eq('mentor_id', ramesh).is('ended_at', null)
+  const demo = (mine ?? []).find((m) => String((m.users as unknown as { email: string }).email).endsWith('@demo.mentora.edu'))!
+  a1 = demo.student_id
+  actors.A1 = await signIn((demo.users as unknown as { email: string }).email, process.env.DEMO_PASSWORD!)
+  actors.M_CSE_2 = await signIn(`m.cse2@${D}`, E2E)
   actors.B1 = await signIn(`b1.ece@${D}`, E2E)
   b1 = actors.B1.id
   t1 = (await admin.from('users').select('id').eq('email', `t1.cse@${D}`).single()).data!.id
@@ -259,7 +260,7 @@ describe('revocation', () => {
     expect((await admin.from('users').select('department_id').eq('id', t1).single()).data!.department_id).toBe(dept.ECE)
     expect((await admin.from('mentor_assignments').select('id').eq('student_id', t1).is('ended_at', null)).data).toHaveLength(0)
     expect(await countIn(actors.HOD_CSE!.db, 'academic_semesters', 'student_id', [t1])).toBe(0)
-    expect(await countIn(actors.M_CSE_1!.db, 'academic_semesters', 'student_id', [t1])).toBe(0)
+    expect(await countIn(actors.M_CSE_2!.db, 'academic_semesters', 'student_id', [t1])).toBe(0)
     expect(await countIn(actors.HOD_ECE!.db, 'academic_semesters', 'student_id', [t1])).toBeGreaterThan(0)
     expect(await countIn(actors.HOD_ECE!.db, 'mentor_recommendations', 'student_id', [t1])).toBeGreaterThan(0)
     const { count: audited } = await admin.from('audit_logs').select('id', { count: 'exact', head: true }).eq('entity_type', 'student_branch_transfers').eq('entity_id', req as string)
